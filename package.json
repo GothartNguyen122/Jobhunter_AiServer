@@ -1,0 +1,23 @@
+{
+  "name": "openai-nodejs-example",
+  "version": "1.0.0",
+  "description": "Node.js example using OpenAI API",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "chat": "node terminal-chat.js",
+    "dev": "node index.js"
+  },
+  "dependencies": {
+    "openai": "^4.20.1",
+    "dotenv": "^16.3.1"
+  },
+  "keywords": [
+    "openai",
+    "nodejs",
+    "chatgpt",
+    "ai"
+  ],
+  "author": "",
+  "license": "MIT"
+}
