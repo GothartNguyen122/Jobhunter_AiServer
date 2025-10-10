@@ -1,0 +1,23 @@
+{
+  "name": "pdf-extractor-test-ui",
+  "version": "1.0.0",
+  "description": "Simple UI to test PDF Extractor API",
+  "main": "index.html",
+  "scripts": {
+    "start": "python -m http.server 8080",
+    "serve": "npx http-server -p 8080 -c-1",
+    "open": "open index.html"
+  },
+  "keywords": [
+    "pdf",
+    "extractor",
+    "test",
+    "ui",
+    "jobhunter"
+  ],
+  "author": "Jobhunter Team",
+  "license": "MIT",
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  }
+}

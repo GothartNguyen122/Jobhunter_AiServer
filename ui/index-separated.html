@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Extractor Test UI</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📄 PDF Extractor Test</h1>
+            <p>Upload PDF files to extract structured data using AI</p>
+        </div>
+
+        <div class="content">
+            <div class="upload-section">
+                <div class="upload-area">
+                    <div class="upload-icon">📁</div>
+                    <div class="upload-text">Choose PDF file to extract data</div>
+                    <input type="file" id="fileInput" class="file-input" accept=".pdf" />
+                    <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+                        📤 Select PDF File
+                    </button>
+                </div>
+                
+                <div class="file-info" id="fileInfo">
+                    <div class="file-name" id="fileName"></div>
+                    <div class="file-size" id="fileSize"></div>
+                </div>
+
+                <button class="extract-btn" id="extractBtn" onclick="extractPDF()">
+                    🔍 Extract Data
+                </button>
+            </div>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <div>Extracting data from PDF...</div>
+            </div>
+
+            <div class="status" id="status"></div>
+
+            <div class="result-section" id="resultSection">
+                <div class="result-title">
+                    <span class="result-icon">📊</span>
+                    Extracted Data
+                </div>
+                <div class="json-display" id="jsonDisplay"></div>
+                <button class="copy-btn" onclick="copyToClipboard()">📋 Copy JSON</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

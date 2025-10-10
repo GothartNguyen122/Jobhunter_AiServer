@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Extractor Demo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .demo-container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .demo-title {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .demo-steps {
+            background: #e3f2fd;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .demo-steps h3 {
+            color: #1976d2;
+            margin-bottom: 15px;
+        }
+        .demo-steps ol {
+            margin-left: 20px;
+        }
+        .demo-steps li {
+            margin-bottom: 8px;
+            line-height: 1.5;
+        }
+        .demo-links {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        .demo-link {
+            background: #4facfe;
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 25px;
+            transition: all 0.3s ease;
+            display: inline-block;
+        }
+        .demo-link:hover {
+            background: #3d8bfe;
+            transform: translateY(-2px);
+        }
+        .demo-note {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        .demo-note strong {
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <h1 class="demo-title">📄 PDF Extractor Test UI Demo</h1>
+        
+        <div class="demo-steps">
+            <h3>🚀 Cách sử dụng:</h3>
+            <ol>
+                <li><strong>Khởi động AI Server:</strong> Chạy <code>npm start</code> trong thư mục Jobhunter_AiServer</li>
+                <li><strong>Mở giao diện test:</strong> Click vào link bên dưới</li>
+                <li><strong>Upload PDF:</strong> Chọn file PDF hoặc drag & drop</li>
+                <li><strong>Extract data:</strong> Click "Extract Data" để trích xuất</li>
+                <li><strong>Xem kết quả:</strong> JSON data sẽ hiển thị trong khung kết quả</li>
+            </ol>
+        </div>
+
+        <div class="demo-links">
+            <a href="index.html" class="demo-link">📄 All-in-One UI</a>
+            <a href="index-separated.html" class="demo-link">🎨 Separated UI</a>
+        </div>
+
+        <div class="demo-note">
+            <strong>📝 Lưu ý:</strong> Đảm bảo AI Server đang chạy trên port 3001 trước khi test. 
+            Nếu gặp lỗi CORS, hãy kiểm tra cấu hình CORS trong AI Server.
+        </div>
+    </div>
+</body>
+</html>
