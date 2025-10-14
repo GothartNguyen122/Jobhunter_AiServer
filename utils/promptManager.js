@@ -116,6 +116,13 @@ class PromptManager {
   }
 
   /**
+   * Get CV compatible prompt
+   */
+  async getCVCompatiblePrompt() {
+    return await this.getPrompt('cv_compatible_prompt');
+  }
+
+  /**
    * Get all prompts
    */
   async getAllPrompts() {

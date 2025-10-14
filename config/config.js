@@ -37,6 +37,7 @@ const config = {
     getInterviewCoach: () => promptManager.getInterviewCoachPrompt(),
     getSalaryNegotiator: () => promptManager.getSalaryNegotiatorPrompt(),
     getNetworkBuilder: () => promptManager.getNetworkBuilderPrompt(),
+    getCVCompatible: () => promptManager.getCVCompatiblePrompt(),
     getAll: () => promptManager.getAllPrompts(),
     getById: async (id) => {
       try {

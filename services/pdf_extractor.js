@@ -44,7 +44,6 @@ class PDFExtractor {
           pdfPath
         ];
 
-        console.log('Running Ghostscript with args:', gsArgs);
 
         // Spawn Ghostscript process
 
@@ -68,7 +67,6 @@ class PDFExtractor {
         gsProcess.on('close', async (code) => {
           try {
             if (code !== 0) {
-              console.error('Ghostscript error output:', errorOutput);
               throw new Error(`Ghostscript failed with code ${code}: ${errorOutput}`);
             }
 
@@ -86,7 +84,7 @@ class PDFExtractor {
             try {
               await fs.unlink(outputPath);
             } catch (cleanupError) {
-              console.warn('Failed to cleanup temporary image file:', cleanupError.message);
+              // Failed to cleanup temporary image file
             }
 
             // Optimize the image with Sharp
@@ -146,18 +144,11 @@ class PDFExtractor {
    */
   async extractFromPdf(pdfPath, pageNumber = 0) {
     try {
-      console.log('=== PDF EXTRACTOR START ===');
-      console.log(`📁 PDF Extractor received file: ${pdfPath}`);
-      console.log(`📄 Processing page: ${pageNumber}`);
-      console.log(`🔄 Converting page ${pageNumber} to image...`);
-      
       // Convert PDF to image
       const imageBuffer = await this.convertPdfToImage(pdfPath, pageNumber);
-      console.log(`✅ Image conversion completed. Size: ${imageBuffer.length} bytes`);
       
       // Convert to base64
       const base64Data = this.imageToBase64(imageBuffer);
-      console.log("✅ Image converted to base64");
       
       // Prepare image data for OpenAI API
       const imageData = {
@@ -169,13 +160,9 @@ class PDFExtractor {
       
       // Get system prompt from promptManager
       const systemPrompt = await config.pdfExtractor.getPrompt();
-      console.log("📝 System prompt loaded from config");
       
       // User prompt
       const userPrompt = "Extract the content from this document. Return ONLY the JSON object with no additional formatting or text.";
-      
-      console.log("🤖 Calling OpenAI Vision API...");
-      console.log("📋 User prompt:", userPrompt);
       
       // Call OpenAI Vision API
       const response = await this.client.chat.completions.create({
@@ -201,8 +188,6 @@ class PDFExtractor {
       });
       
       const extractedText = response.choices[0].message.content;
-      console.log("✅ OpenAI API response received");
-      console.log("📄 Raw OpenAI response:", extractedText);
       
       // Clean the response text to extract JSON
       let cleanedText = extractedText.trim();
@@ -214,30 +199,20 @@ class PDFExtractor {
         cleanedText = cleanedText.replace(/^```\s*/, '').replace(/\s*```$/, '');
       }
       
-      console.log("🧹 Cleaned text:", cleanedText);
-      
       // Parse the JSON response
       let extractedData;
       try {
         extractedData = JSON.parse(cleanedText);
-        console.log("✅ Successfully parsed JSON response");
-        console.log("📋 Final extracted data:", JSON.stringify(extractedData, null, 2));
       } catch (parseError) {
         // Try to extract JSON from the response using regex
         const jsonMatch = cleanedText.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
           try {
             extractedData = JSON.parse(jsonMatch[0]);
-            console.log("Successfully extracted JSON from response");
           } catch (secondParseError) {
-            console.error('Raw OpenAI response:', extractedText);
-            console.error('Cleaned text:', cleanedText);
-            console.error('Extracted JSON attempt:', jsonMatch[0]);
             throw new Error(`Failed to parse OpenAI response as JSON: ${parseError.message}`);
           }
         } else {
-          console.error('Raw OpenAI response:', extractedText);
-          console.error('Cleaned text:', cleanedText);
           throw new Error(`Failed to parse OpenAI response as JSON: ${parseError.message}`);
         }
       }
@@ -247,12 +222,10 @@ class PDFExtractor {
         throw new Error(extractedData.error);
       }
 
-      console.log("🎉 Successfully extracted data from PDF");
-      console.log("=== PDF EXTRACTOR END ===");
       return extractedData;
       
     } catch (error) {
-      console.error('❌ Error processing PDF in Extractor:', error);
+      console.error('Error processing PDF in Extractor:', error);
       
       if (error.code === 'insufficient_quota') {
         throw new Error('OpenAI API quota exceeded. Please check your billing.');

@@ -6,6 +6,7 @@ const chatboxRoutes = require('./chatboxRoutes');
 const chatRoutes = require('./chatRoutes');
 const pdfRoutes = require('./pdfRoutes');
 const healthRoutes = require('./healthRoutes');
+const compareJobCVRoutes = require('./compareJobCVRoutes');
 
 // API version prefix
 const API_VERSION = '/api/v1';
@@ -15,6 +16,7 @@ router.use(`${API_VERSION}/chatboxes`, chatboxRoutes);
 router.use(`${API_VERSION}/chat`, chatRoutes);
 router.use(`${API_VERSION}/pdf`, pdfRoutes);
 router.use(`${API_VERSION}/health`, healthRoutes);
+router.use(`${API_VERSION}/cv_compatible`, compareJobCVRoutes);
 
 // Legacy endpoints for backward compatibility
 router.use('/api/v1/AiServer', chatRoutes);
@@ -31,7 +33,8 @@ router.get('/', (req, res) => {
       chatboxes: `${API_VERSION}/chatboxes`,
       chat: `${API_VERSION}/chat`,
       pdf: `${API_VERSION}/pdf`,
-      health: `${API_VERSION}/health`
+      health: `${API_VERSION}/health`,
+      cv_compatible: `${API_VERSION}/cv_compatible`
     }
   });
 });

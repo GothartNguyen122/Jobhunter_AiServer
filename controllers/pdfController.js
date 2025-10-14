@@ -24,10 +24,6 @@ const storage = multer.diskStorage({
   }
 });
 
-console.log('=== MULTER CONFIG DEBUG ===');
-console.log('Config upload:', config.upload);
-console.log('Max file size:', config.upload.maxFileSize);
-console.log('Allowed types:', config.upload.allowedTypes);
 
 // Simple multer config for testing
 const upload = multer({
@@ -36,7 +32,6 @@ const upload = multer({
     fileSize: 10 * 1024 * 1024, // 10MB
   },
   fileFilter: (req, file, cb) => {
-    console.log('File filter called for:', file.originalname, file.mimetype);
     const allowedTypes = [
       'application/pdf',
       'application/msword',
@@ -44,9 +39,6 @@ const upload = multer({
       'text/plain' // Allow text files for testing
     ];
     const mimetype = allowedTypes.includes(file.mimetype);
-    console.log('Allowed types:', allowedTypes);
-    console.log('File mimetype:', file.mimetype);
-    console.log('Is allowed:', mimetype);
 
     if (mimetype) {
       return cb(null, true);
@@ -58,50 +50,25 @@ const upload = multer({
 
 class PDFController {
   constructor() {
-    console.log('=== PDF CONTROLLER CONSTRUCTOR START ===');
     try {
-      console.log('🔄 Initializing PDFExtractor...');
       this.pdfExtractor = new PDFExtractor();
-      console.log('✅ PDFExtractor initialized successfully');
-      console.log('📋 PDFExtractor instance:', typeof this.pdfExtractor);
     } catch (error) {
-      console.error('❌ Failed to initialize PDFExtractor:', error);
-      console.error('❌ Error details:', error.message);
+      console.error('Failed to initialize PDFExtractor:', error);
       this.pdfExtractor = null;
     }
-    console.log('=== PDF CONTROLLER CONSTRUCTOR END ===');
   }
 
   // Extract content from PDF
   async extractFromPdf(req, res) {
     try {
-      console.log('=== PDF CONTROLLER START ===');
-      console.log('📁 File received in Controller:', req.file ? req.file.originalname : 'No file');
-      console.log('📊 Request body:', req.body);
-      console.log('📄 Request file details:', req.file);
-      console.log('🔍 PDF Extractor status:', this.pdfExtractor ? 'Available' : 'Not available');
-      console.log('🔍 PDF Extractor type:', typeof this.pdfExtractor);
-      console.log('🔍 This context:', this);
-      console.log('🔍 This pdfExtractor:', this.pdfExtractor);
-      
       if (!req.file) {
-        console.log('❌ No file uploaded to Controller');
         logger.warn('No file uploaded for PDF extraction');
         return res.status(400).json(errorResponse('No file uploaded', 400));
       }
 
-      console.log('✅ File details in Controller:', {
-        originalname: req.file.originalname,
-        mimetype: req.file.mimetype,
-        size: req.file.size,
-        path: req.file.path
-      });
-
       // Validate uploaded file
       const validation = validateFileUpload(req.file);
-      console.log('Validation result:', validation);
       if (!validation.isValid) {
-        console.log('Validation failed:', validation.errors);
         logger.warn('Invalid file upload', validation.errors);
         return res.status(400).json(validationErrorResponse('Invalid file', validation.errors));
       }
@@ -116,11 +83,8 @@ class PDFController {
       
       // Handle different file types
       if (fileType === 'application/pdf') {
-        console.log('🔍 Processing PDF file in Controller');
-        
         // Check if PDFExtractor is available
         if (!this.pdfExtractor || this.pdfExtractor === null) {
-          console.log('❌ PDFExtractor not available, using fallback');
           extractedData = {
             type: 'pdf_fallback',
             message: 'PDF file detected but PDFExtractor not available. Ghostscript may not be installed.',
@@ -131,9 +95,6 @@ class PDFController {
           };
         } else {
           try {
-            console.log('🚀 Calling PDF Extractor from Controller...');
-            console.log('📂 File path:', filePath);
-            console.log('📄 Page number:', parseInt(pageNumber));
             
             // Extract content from PDF using PDF extractor
             // Nếu dùng memoryStorage, req.file.buffer có dữ liệu PDF
@@ -147,12 +108,8 @@ class PDFController {
 
             // Sau khi xong, xóa file tạm
             await fs.unlink(tempPath);
-
-        
-            console.log('✅ PDF Extractor completed successfully');
-            console.log('📋 Extracted data from PDF Extractor:', JSON.stringify(extractedData, null, 2));
           } catch (pdfError) {
-            console.error('❌ PDF extraction error in Controller:', pdfError);
+            console.error('PDF extraction error in Controller:', pdfError);
             // Fallback: return basic file info if PDF extraction fails
             extractedData = {
               type: 'pdf_fallback',
@@ -180,16 +137,6 @@ class PDFController {
 
       logger.pdfExtractionSuccess(filePath, extractedData);
 
-      // DEBUG: Log extracted content to console
-      console.log('=== CV EXTRACTION DEBUG ===');
-      console.log('File:', req.file.originalname);
-      console.log('Size:', req.file.size, 'bytes');
-      console.log('MIME Type:', req.file.mimetype);
-      console.log('Page Number:', parseInt(pageNumber));
-      console.log('Extracted Content:');
-      console.log(JSON.stringify(extractedData, null, 2));
-      console.log('=== END CV EXTRACTION DEBUG ===');
-
       // Clean up uploaded file
       try {
         await fs.unlink(filePath);
@@ -209,10 +156,7 @@ class PDFController {
       }));
 
     } catch (error) {
-      console.error('=== PDF EXTRACT ERROR ===');
-      console.error('Error:', error);
-      console.error('Stack:', error.stack);
-      console.error('=== END PDF EXTRACT ERROR ===');
+      console.error('PDF extraction error:', error);
       
       logger.pdfExtractionError(req.file?.path || 'unknown', error);
       
@@ -314,11 +258,7 @@ class PDFController {
 }
 
 // Export both controller and multer middleware
-console.log('=== CREATING PDF CONTROLLER INSTANCE ===');
 const pdfControllerInstance = new PDFController();
-console.log('=== PDF CONTROLLER INSTANCE CREATED ===');
-console.log('PDF Controller instance:', typeof pdfControllerInstance);
-console.log('PDF Extractor in instance:', typeof pdfControllerInstance.pdfExtractor);
 
 module.exports = {
   controller: pdfControllerInstance,
