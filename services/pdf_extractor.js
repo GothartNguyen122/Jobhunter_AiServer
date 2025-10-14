@@ -1,3 +1,4 @@
+require('dotenv').config();
 const OpenAI = require('openai');
 const fs = require('fs').promises;
 const path = require('path');
@@ -46,7 +47,13 @@ class PDFExtractor {
         console.log('Running Ghostscript with args:', gsArgs);
 
         // Spawn Ghostscript process
-        const gsProcess = spawn('gswin64c', gsArgs, {
+
+        // Ensure PATH includes Homebrew binaries
+        process.env.PATH = process.env.PATH + ':/opt/homebrew/bin';
+
+        // Use correct Ghostscript command for macOS/Linux
+        const gsCommand = '/opt/homebrew/bin/gs';
+        const gsProcess = spawn(gsCommand, gsArgs, {
           stdio: ['pipe', 'pipe', 'pipe']
         });
 
@@ -139,16 +146,18 @@ class PDFExtractor {
    */
   async extractFromPdf(pdfPath, pageNumber = 0) {
     try {
-      console.log(`Processing PDF: ${pdfPath}`);
-      console.log(`Converting page ${pageNumber} to image...`);
+      console.log('=== PDF EXTRACTOR START ===');
+      console.log(`📁 PDF Extractor received file: ${pdfPath}`);
+      console.log(`📄 Processing page: ${pageNumber}`);
+      console.log(`🔄 Converting page ${pageNumber} to image...`);
       
       // Convert PDF to image
       const imageBuffer = await this.convertPdfToImage(pdfPath, pageNumber);
-      console.log(`Image size: ${imageBuffer.length} bytes`);
+      console.log(`✅ Image conversion completed. Size: ${imageBuffer.length} bytes`);
       
       // Convert to base64
       const base64Data = this.imageToBase64(imageBuffer);
-      console.log("Image converted to base64");
+      console.log("✅ Image converted to base64");
       
       // Prepare image data for OpenAI API
       const imageData = {
@@ -160,11 +169,13 @@ class PDFExtractor {
       
       // Get system prompt from promptManager
       const systemPrompt = await config.pdfExtractor.getPrompt();
+      console.log("📝 System prompt loaded from config");
       
       // User prompt
       const userPrompt = "Extract the content from this document. Return ONLY the JSON object with no additional formatting or text.";
       
-      console.log("Calling OpenAI Vision API...");
+      console.log("🤖 Calling OpenAI Vision API...");
+      console.log("📋 User prompt:", userPrompt);
       
       // Call OpenAI Vision API
       const response = await this.client.chat.completions.create({
@@ -190,7 +201,8 @@ class PDFExtractor {
       });
       
       const extractedText = response.choices[0].message.content;
-      console.log("OpenAI API response received");
+      console.log("✅ OpenAI API response received");
+      console.log("📄 Raw OpenAI response:", extractedText);
       
       // Clean the response text to extract JSON
       let cleanedText = extractedText.trim();
@@ -202,11 +214,14 @@ class PDFExtractor {
         cleanedText = cleanedText.replace(/^```\s*/, '').replace(/\s*```$/, '');
       }
       
+      console.log("🧹 Cleaned text:", cleanedText);
+      
       // Parse the JSON response
       let extractedData;
       try {
         extractedData = JSON.parse(cleanedText);
-        console.log("Successfully parsed JSON response");
+        console.log("✅ Successfully parsed JSON response");
+        console.log("📋 Final extracted data:", JSON.stringify(extractedData, null, 2));
       } catch (parseError) {
         // Try to extract JSON from the response using regex
         const jsonMatch = cleanedText.match(/\{[\s\S]*\}/);
@@ -232,11 +247,12 @@ class PDFExtractor {
         throw new Error(extractedData.error);
       }
 
-      console.log(`Successfully extracted data from PDF`);
+      console.log("🎉 Successfully extracted data from PDF");
+      console.log("=== PDF EXTRACTOR END ===");
       return extractedData;
       
     } catch (error) {
-      console.error('Error processing PDF:', error);
+      console.error('❌ Error processing PDF in Extractor:', error);
       
       if (error.code === 'insufficient_quota') {
         throw new Error('OpenAI API quota exceeded. Please check your billing.');

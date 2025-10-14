@@ -71,7 +71,12 @@ const config = {
   // File upload
   upload: {
     maxFileSize: 10 * 1024 * 1024, // 10MB
-    allowedTypes: ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/bmp', 'image/webp']
+    allowedTypes: [
+      'application/pdf', 
+      'application/msword', 
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/bmp', 'image/webp'
+    ]
   }
 };
 

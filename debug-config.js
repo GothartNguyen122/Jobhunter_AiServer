@@ -12,3 +12,4 @@ config.pdfExtractor.getPrompt().then(prompt => {
 }).catch(err => {
   console.error('Error loading PDF extractor prompt:', err);
 });
+
