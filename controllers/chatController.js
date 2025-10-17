@@ -1,6 +1,7 @@
 const OpenAI = require('openai');
 const database = require('../config/database');
 const config = require('../config/config');
+const supabaseService = require('../services/supabaseService');
 const { successResponse, errorResponse, notFoundResponse, validationErrorResponse } = require('../utils/response');
 const { validateMessageData, sanitizeObject } = require('../utils/validation');
 const logger = require('../utils/logger');
@@ -48,7 +49,8 @@ class ChatController {
         role: 'user',
         content: messageData.user?.name 
           ? `User(${messageData.user.name}${messageData.user.role ? '|' + messageData.user.role : ''}): ${messageData.message}`
-          : messageData.message
+          : messageData.message,
+        time: new Date().toISOString()
       };
       
       conversation = database.addMessage(chatboxId, userMessage);
@@ -98,10 +100,38 @@ class ChatController {
       // Add AI response to conversation
       const assistantMessage = {
         role: 'assistant',
-        content: aiResponse
+        content: aiResponse,
+        time: new Date().toISOString()
       };
       
       database.addMessage(chatboxId, assistantMessage);
+
+      // Save conversation to Supabase
+      try {
+        const finalConversation = database.getConversation(chatboxId);
+        const conversationId = chatboxId;
+        const username = messageData.user?.name || 'anonymous';
+        const role = messageData.user?.role || 'user';
+        
+        // Format messages for Supabase with timestamps
+        const formattedMessages = finalConversation.map(msg => ({
+          role: msg.role,
+          content: msg.content,
+          time: msg.time || new Date().toISOString()
+        }));
+
+        await supabaseService.saveConversation(
+          conversationId,
+          username,
+          role,
+          formattedMessages
+        );
+        
+        logger.info(`Conversation saved to Supabase: ${conversationId}`);
+      } catch (supabaseError) {
+        logger.error('Failed to save conversation to Supabase:', supabaseError);
+        // Continue with response even if Supabase save fails
+      }
 
       const processingTime = Date.now() - startTime;
       logger.chatboxResponse(chatboxId, aiResponse, processingTime);
@@ -183,6 +213,102 @@ class ChatController {
     } catch (error) {
       logger.error('Error clearing conversation history', error);
       res.status(500).json(errorResponse('Failed to clear conversation history', 500));
+    }
+  }
+
+  // Get all conversations from Supabase
+  async getAllConversations(req, res) {
+    try {
+      logger.info('Getting all conversations from Supabase');
+      
+      const conversations = await supabaseService.getAllConversations();
+      
+      const formattedConversations = conversations.map(conv => ({
+        id: conv.id,
+        conversationId: conv.conversation_id,
+        username: conv.username,
+        role: conv.role,
+        messageCount: conv.messages ? conv.messages.length : 0,
+        createdAt: conv.created_at,
+        lastMessage: conv.messages && conv.messages.length > 0 
+          ? conv.messages[conv.messages.length - 1]?.content || '' 
+          : ''
+      }));
+      
+      logger.success(`Retrieved ${conversations.length} conversations from Supabase`);
+      res.json(successResponse('Conversations retrieved successfully', formattedConversations));
+    } catch (error) {
+      logger.error('Error getting all conversations:', error);
+      res.status(500).json(errorResponse('Failed to retrieve conversations', 500));
+    }
+  }
+
+  // Get conversation by ID from Supabase
+  async getConversationById(req, res) {
+    try {
+      const { conversationId } = req.params;
+      logger.info(`Getting conversation from Supabase: ${conversationId}`);
+      
+      const conversation = await supabaseService.getConversation(conversationId);
+      
+      if (!conversation) {
+        logger.warn(`Conversation not found: ${conversationId}`);
+        return res.status(404).json(notFoundResponse('Conversation not found'));
+      }
+      
+      logger.success(`Retrieved conversation: ${conversationId}`);
+      res.json(successResponse('Conversation retrieved successfully', conversation));
+    } catch (error) {
+      logger.error('Error getting conversation:', error);
+      res.status(500).json(errorResponse('Failed to retrieve conversation', 500));
+    }
+  }
+
+  // Get conversations by username
+  async getConversationsByUsername(req, res) {
+    try {
+      const { username } = req.params;
+      logger.info(`Getting conversations for username: ${username}`);
+      
+      const conversations = await supabaseService.getConversationsByUsername(username);
+      
+      logger.success(`Retrieved ${conversations.length} conversations for username: ${username}`);
+      res.json(successResponse('Conversations retrieved successfully', conversations));
+    } catch (error) {
+      logger.error('Error getting conversations by username:', error);
+      res.status(500).json(errorResponse('Failed to retrieve conversations', 500));
+    }
+  }
+
+  // Get conversations by role
+  async getConversationsByRole(req, res) {
+    try {
+      const { role } = req.params;
+      logger.info(`Getting conversations for role: ${role}`);
+      
+      const conversations = await supabaseService.getConversationsByRole(role);
+      
+      logger.success(`Retrieved ${conversations.length} conversations for role: ${role}`);
+      res.json(successResponse('Conversations retrieved successfully', conversations));
+    } catch (error) {
+      logger.error('Error getting conversations by role:', error);
+      res.status(500).json(errorResponse('Failed to retrieve conversations', 500));
+    }
+  }
+
+  // Delete conversation from Supabase
+  async deleteConversation(req, res) {
+    try {
+      const { conversationId } = req.params;
+      logger.info(`Deleting conversation: ${conversationId}`);
+      
+      await supabaseService.deleteConversation(conversationId);
+      
+      logger.success(`Conversation deleted: ${conversationId}`);
+      res.json(successResponse('Conversation deleted successfully'));
+    } catch (error) {
+      logger.error('Error deleting conversation:', error);
+      res.status(500).json(errorResponse('Failed to delete conversation', 500));
     }
   }
 

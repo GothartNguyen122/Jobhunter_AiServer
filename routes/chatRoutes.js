@@ -11,6 +11,13 @@ router.get('/:chatboxId/history', chatController.getConversationHistory);
 // Clear conversation history for specific chatbox
 router.delete('/:chatboxId/history', chatController.clearConversationHistory);
 
+// Supabase conversation management endpoints
+router.get('/conversations', chatController.getAllConversations);
+router.get('/conversations/:conversationId', chatController.getConversationById);
+router.get('/conversations/user/:username', chatController.getConversationsByUsername);
+router.get('/conversations/role/:role', chatController.getConversationsByRole);
+router.delete('/conversations/:conversationId', chatController.deleteConversation);
+
 // Legacy endpoints for backward compatibility
 router.post('/', chatController.sendMessage); // Legacy POST /api/v1/AiServer
 router.get('/history', chatController.getConversationHistory); // Legacy GET /api/v1/AiServer/history
