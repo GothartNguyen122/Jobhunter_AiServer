@@ -18,6 +18,9 @@ router.get('/:chatboxId/session/current', (req, res) => {
 // Clear conversation history for specific chatbox
 router.delete('/:chatboxId/history', chatController.clearConversationHistory);
 
+// Clear user session (for logout)
+router.post('/:chatboxId/session/clear', chatController.clearUserSession);
+
 // Supabase conversation management endpoints
 router.get('/conversations', chatController.getAllConversations);
 router.get('/conversations/:conversationId', chatController.getConversationById);

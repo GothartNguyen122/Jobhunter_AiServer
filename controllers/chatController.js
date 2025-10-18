@@ -51,7 +51,15 @@ class ChatController {
       // Resolve session conversation id based on user & inactivity
       const username = messageData.user?.name || 'anonymous';
       const role = messageData.user?.role || 'user';
-      const { conversationId, isNew } = sessionService.getOrCreateSession(chatboxId, username, role);
+      
+      // ✅ KIỂM TRA SESSION STORAGE TỪ FRONTEND
+      const sessionInfo = messageData.sessionInfo;
+      
+      // ✅ DEBUG LOGGING
+      logger.info(`🔍 ChatController Debug - MessageData: ${JSON.stringify(messageData)}`);
+      logger.info(`🔍 ChatController Debug - SessionInfo: ${JSON.stringify(sessionInfo)}`);
+      
+      let { conversationId, isNew } = sessionService.getOrCreateSession(chatboxId, username, role, sessionInfo);
 
       // If new session, clear any existing conversation in memory
       if (isNew) {
@@ -167,21 +175,29 @@ class ChatController {
         );
         
         if (userMessages.length > 0) {
-          // Format messages for Supabase with timestamps
-          const formattedMessages = finalConversation.map(msg => ({
-            role: msg.role,
-            content: msg.content,
-            time: msg.time || new Date().toISOString()
-          }));
-
-          await supabaseService.saveConversation(
-            conversationId,
-            username,
-            role,
-            formattedMessages
-          );
+          // ✅ KIỂM TRA XEM ĐÃ LƯU CHƯA ĐỂ TRÁNH LƯU TRÙNG LẶP
+          const existingConversation = await supabaseService.getConversation(conversationId);
           
-          logger.info(`Conversation saved to Supabase: ${conversationId}`);
+          // Chỉ lưu nếu chưa có hoặc có thay đổi
+          if (!existingConversation || existingConversation.messages.length !== userMessages.length) {
+            // Format messages for Supabase with timestamps
+            const formattedMessages = finalConversation.map(msg => ({
+              role: msg.role,
+              content: msg.content,
+              time: msg.time || new Date().toISOString()
+            }));
+
+            await supabaseService.saveConversation(
+              conversationId,
+              username,
+              role,
+              formattedMessages
+            );
+            
+            logger.info(`Conversation saved to Supabase: ${conversationId}`);
+          } else {
+            logger.info(`Conversation already exists in Supabase: ${conversationId}, skipping save`);
+          }
         }
       } catch (supabaseError) {
         logger.error('Failed to save conversation to Supabase:', supabaseError);
@@ -544,6 +560,57 @@ class ChatController {
     } catch (error) {
       logger.error('Error getting legacy conversation history', error);
       res.status(500).json(errorResponse('Failed to retrieve conversation history', 500));
+    }
+  }
+
+  // Clear user session (for logout)
+  async clearUserSession(req, res) {
+    try {
+      const { chatboxId } = req.params;
+      const { username, role, conversationId } = req.body;
+      
+      logger.info(`Clearing user session for chatbox: ${chatboxId}, user: ${username}, role: ${role}`);
+      
+      // Validate chatboxId
+      if (!chatboxId || chatboxId === 'undefined') {
+        logger.warn('Invalid chatboxId provided:', chatboxId);
+        return res.status(400).json(validationErrorResponse('Invalid chatboxId', ['chatboxId is required']));
+      }
+      
+      // Check if chatbox exists
+      const chatbox = database.getChatboxById(chatboxId);
+      if (!chatbox) {
+        logger.warn(`Chatbox not found: ${chatboxId}`);
+        return res.status(404).json(notFoundResponse(`Chatbox not found: ${chatboxId}`));
+      }
+      
+      // Clear session from sessionService
+      if (username && role) {
+        const sessionCleared = sessionService.endSession(chatboxId, username, role);
+        if (sessionCleared) {
+          logger.info(`Session cleared for user ${username} in chatbox ${chatboxId}`);
+        }
+      }
+      
+      // Clear conversation from memory if conversationId provided
+      if (conversationId && conversationId !== 'undefined') {
+        const conversationCleared = database.clearConversation(conversationId);
+        if (conversationCleared) {
+          logger.info(`Conversation ${conversationId} cleared from memory`);
+        }
+      }
+      
+      logger.success(`User session cleared successfully for chatbox: ${chatboxId}`);
+      res.json(successResponse('User session cleared successfully', {
+        chatboxId: chatboxId,
+        username: username,
+        role: role,
+        conversationId: conversationId,
+        cleared: true
+      }));
+    } catch (error) {
+      logger.error('Error clearing user session', error);
+      res.status(500).json(errorResponse('Failed to clear user session', 500));
     }
   }
 
