@@ -6,6 +6,8 @@ const sessionService = require('../services/sessionService');
 const { successResponse, errorResponse, notFoundResponse, validationErrorResponse } = require('../utils/response');
 const { validateMessageData, sanitizeObject } = require('../utils/validation');
 const logger = require('../utils/logger');
+const functions = require('../services/functions_call/functions');
+const { call_function } = require('../services/tools_call');
 
 // Initialize OpenAI client
 const openai = new OpenAI({
@@ -137,10 +139,32 @@ class ChatController {
         });
       }
 
-      // Filter out any messages with null/undefined content
-      const validMessages = conversation.filter(msg => 
-        msg && msg.content && typeof msg.content === 'string' && msg.content.trim() !== ''
-      );
+      // Filter out any messages with invalid content
+      const validMessages = conversation.filter(msg => {
+        if (!msg || !msg.role) return false;
+      
+        // System và user messages phải có content dạng string
+        if (msg.role === 'system' || msg.role === 'user') {
+          return msg.content && typeof msg.content === 'string' && msg.content.trim() !== '';
+        }
+      
+        // Assistant messages: chỉ chấp nhận nếu có content là string KHÔNG null
+        // hoặc có tool_calls hợp lệ (và khi đó phải bỏ content null)
+        if (msg.role === 'assistant') {
+          if (msg.tool_calls && !msg.content) {
+            msg.content = ''; // 🔧 đảm bảo luôn là string
+          }
+          return typeof msg.content === 'string';
+        }
+      
+        // Tool messages phải có string content
+        if (msg.role === 'tool') {
+          return msg.content && typeof msg.content === 'string' && msg.content.trim() !== '';
+        }
+      
+        return false;
+      });
+      
 
       // Prepare OpenAI request
       const openaiPayload = {
@@ -148,22 +172,118 @@ class ChatController {
         messages: validMessages,
         max_tokens: config.openai.maxTokens,
         temperature: config.openai.temperature,
+        tools: functions,
+        tool_choice: "auto"
       };
 
       logger.debug('OpenAI request payload', openaiPayload);
 
       // Call OpenAI API
       const completion = await openai.chat.completions.create(openaiPayload);
-      const aiResponse = completion.choices[0].message.content;
+      const reply = completion.choices[0].message;
       
-      // Add AI response to conversation
+      // Add assistant message to conversation (with tool_calls if any)
       const assistantMessage = {
         role: 'assistant',
-        content: aiResponse,
+        content: reply.content || (reply.tool_calls ? "" : "I'm processing your request..."),
+        tool_calls: reply.tool_calls || null,
         time: new Date().toISOString()
       };
       
       database.addMessage(conversationId, assistantMessage);
+
+      let aiResponse = reply.content;
+
+      // Handle tool calls if present
+      if (reply.tool_calls && reply.tool_calls.length > 0) {
+        logger.info(`Processing ${reply.tool_calls.length} tool calls`);
+        
+        // Process each tool call
+        for (const tool_call of reply.tool_calls) {
+          try {
+            const functionName = tool_call.function.name;
+            const functionArgs = JSON.parse(tool_call.function.arguments);
+            
+            logger.info(`Calling function: ${functionName} with args:`, functionArgs);
+            
+            // Call the function using tools_call.js
+            const result = await call_function(functionName, functionArgs);
+            logger.info(`Function ${functionName} completed:`, result);
+            logger.info(`Function return  ${functionName} result:`, result.data.data.result);
+
+              // Add tool result to conversation
+              const toolMessage = {
+                role: 'tool',
+                tool_call_id: tool_call.id,
+                name: functionName,
+                content: `Tool function ${functionName} result: ${JSON.stringify(result.data ?? result)}`,
+                time: new Date().toISOString()
+              };
+            
+            database.addMessage(conversationId, toolMessage);
+            
+            // logger.info(`Function ${functionName} completed:`, result);
+          } catch (toolError) {
+            logger.error(`Error executing tool call ${tool_call.function.name}:`, toolError);
+          }
+        }
+
+        // Get updated conversation with tool results
+        const updatedConversation = database.getConversation(conversationId);
+        logger.info('Updated conversation with tool results:', updatedConversation);
+        
+        // Filter updated conversation (same logic as before)
+        const validUpdatedMessages = updatedConversation.filter(msg => {
+          if (!msg || !msg.role) return false;
+        
+          // System và user messages phải có content dạng string
+          if (msg.role === 'system' || msg.role === 'user') {
+            return msg.content && typeof msg.content === 'string' && msg.content.trim() !== '';
+          }
+        
+          // Assistant messages: chỉ chấp nhận nếu có content là string KHÔNG null
+          if (msg.role === 'assistant') {
+            if (msg.tool_calls && !msg.content) {
+              msg.content = ''; // 🔧 đảm bảo luôn là string
+            }
+            return typeof msg.content === 'string';
+          }
+        
+          // Tool messages phải có string content
+          if (msg.role === 'tool') {
+            return msg.content && typeof msg.content === 'string' && msg.content.trim() !== '';
+          }
+        
+          return false;
+        });
+        
+        // Make second OpenAI call with tool results
+        const secondPayload = {
+          model: config.openai.model,
+          messages: validUpdatedMessages,
+          max_tokens: config.openai.maxTokens,
+          temperature: config.openai.temperature
+        };
+        logger.info('Second OpenAI request with tool results', secondPayload);
+        logger.debug('Second OpenAI request with tool results', secondPayload);
+        
+        const secondResponse = await openai.chat.completions.create(secondPayload);
+        const finalMessage = secondResponse.choices[0].message;
+        
+        // Update the assistant message with final response
+        aiResponse = finalMessage.content;
+        
+        // Add final response to conversation
+        const finalAssistantMessage = {
+          role: 'assistant',
+          content: finalMessage.content,
+          time: new Date().toISOString()
+        };
+        
+        database.addMessage(conversationId, finalAssistantMessage);
+        
+        logger.info('Tool calls processed and final response generated');
+      }
 
       // Save conversation to Supabase (only when there are actual messages)
       try {
@@ -220,17 +340,21 @@ class ChatController {
 
     } catch (error) {
       const processingTime = Date.now() - startTime;
+      
+      // Log lỗi chi tiết trên terminal
+      console.error('❌ AI Server Error:', error.message);
+      console.error('📍 Error Stack:', error.stack);
+      console.error('⏱️ Processing Time:', processingTime + 'ms');
+      console.error('🆔 Chatbox ID:', req.params.chatboxId);
+      
+      // Ghi log vào hệ thống
       logger.chatboxError(req.params.chatboxId, error);
       
-      // Return fallback response
-      const chatController = new ChatController();
-      const fallbackResponse = chatController.getFallbackResponse(messageData?.message || '');
-      
-      const response = successResponse('Message processed with fallback', {
-        message: fallbackResponse,
+      // Trả về thông báo lỗi thay vì fallback response
+      const response = errorResponse('Lỗi Ai Server', {
         chatboxId: req.params.chatboxId,
         processingTime: processingTime,
-        fallback: true
+        error: true
       });
 
       res.json(response);

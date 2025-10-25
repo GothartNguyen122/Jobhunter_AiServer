@@ -8,10 +8,13 @@
     "dev": "nodemon server.js",
     "chat": "node terminal-chat.js",
     "test": "node test-api.js",
-    "test:supabase": "node test-supabase.js"
+    "test:supabase": "node test-supabase.js",
+    "test:tools": "node test-tools.js",
+    "debug:jwt": "node debug-jwt.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.75.0",
+    "axios": "^1.6.0",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
@@ -19,6 +22,7 @@
     "helmet": "^7.1.0",
     "json5": "^2.2.3",
     "multer": "^1.4.5-lts.1",
+    "mysql2": "^3.15.2",
     "openai": "^4.20.1",
     "sharp": "^0.32.6",
     "uuid": "^13.0.0"
