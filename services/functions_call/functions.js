@@ -50,6 +50,60 @@ const functions = [
       }
     }
   },
+  {
+    "type": "function",
+    "function": {
+      "name": "search_job",
+      "description": "Search and filter jobs by keyword, location, skills, salary range, and level with pagination",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "keyword": {
+            "type": "string",
+            "description": "Search text for job name (case-insensitive)",
+            "default": ""
+          },
+          "location": {
+            "type": "string",
+            "description": "Comma-separated list of locations to include"
+          },
+          "skills": {
+            "type": "string",
+            "description": "Comma-separated list of skill names to include"
+          },
+          "minSalary": {
+            "type": "number",
+            "description": "Minimum salary filter (inclusive)",
+            "default": 0
+          },
+          "maxSalary": {
+            "type": "number",
+            "description": "Maximum salary filter (inclusive)",
+            "default": 100000000
+          },
+          "level": {
+            "type": "string",
+            "description": "Comma-separated list of levels (must match LevelEnum names)"
+          },
+          "page": {
+            "type": "integer",
+            "description": "Page number for pagination (1-based or backend-specific)",
+            "default": 1
+          },
+          "size": {
+            "type": "integer",
+            "description": "Number of items per page",
+            "default": 10
+          },
+          "sort": {
+            "type": "string",
+            "description": "Sort field and direction, e.g. 'name,asc'",
+            "default": "updatedAt,desc"
+          }
+        }
+      }
+    }
+  },
   
   // Company Management Functions
   {

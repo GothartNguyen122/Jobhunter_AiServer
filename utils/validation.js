@@ -131,6 +131,52 @@ const sanitizeObject = (obj) => {
   return sanitized;
 };
 
+/**
+ * Filter conversation messages to ensure valid content for OpenAI API
+ * @param {Array} messages - Array of conversation messages
+ * @returns {Array} Filtered messages with valid content
+ */
+const filterValidMessages = (messages) => {
+  return messages.filter(msg => {
+    if (!msg || !msg.role) return false;
+  
+    // System và user messages phải có content dạng string
+    if (msg.role === 'system' || msg.role === 'user') {
+      return msg.content && typeof msg.content === 'string' && msg.content.trim() !== '';
+    }
+  
+    // Assistant messages: chỉ chấp nhận nếu có content là string KHÔNG null
+    // hoặc có tool_calls hợp lệ (và khi đó phải bỏ content null)
+    if (msg.role === 'assistant') {
+      if (msg.tool_calls && !msg.content) {
+        msg.content = ''; // 🔧 đảm bảo luôn là string
+      }
+      return typeof msg.content === 'string';
+    }
+  
+    // Tool messages phải có string content
+    if (msg.role === 'tool') {
+      return msg.content && typeof msg.content === 'string' && msg.content.trim() !== '';
+    }
+  
+    return false;
+  });
+};
+
+/**
+ * Filter conversation messages for frontend display (remove system and tool messages)
+ * @param {Array} messages - Array of conversation messages
+ * @returns {Array} Filtered messages for user display
+ */
+const filterUserMessages = (messages) => {
+  return messages.filter(msg => {
+    if (!msg || !msg.role) return false;
+    
+    // Chỉ giữ lại user và assistant messages
+    return msg.role === 'user' || msg.role === 'assistant';
+  });
+};
+
 module.exports = {
   validateEmail,
   validatePhoneNumber,
@@ -139,5 +185,7 @@ module.exports = {
   validateMessageData,
   validateFileUpload,
   sanitizeString,
-  sanitizeObject
+  sanitizeObject,
+  filterValidMessages,
+  filterUserMessages
 };

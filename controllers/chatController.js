@@ -4,10 +4,11 @@ const config = require('../config/config');
 const supabaseService = require('../services/supabaseService');
 const sessionService = require('../services/sessionService');
 const { successResponse, errorResponse, notFoundResponse, validationErrorResponse } = require('../utils/response');
-const { validateMessageData, sanitizeObject } = require('../utils/validation');
+const { validateMessageData, sanitizeObject, filterValidMessages, filterUserMessages } = require('../utils/validation');
 const logger = require('../utils/logger');
 const functions = require('../services/functions_call/functions');
 const { call_function } = require('../services/tools_call');
+const { formatSearchJobResults } = require('../services/functions_call/support_functions');
 
 // Initialize OpenAI client
 const openai = new OpenAI({
@@ -140,30 +141,7 @@ class ChatController {
       }
 
       // Filter out any messages with invalid content
-      const validMessages = conversation.filter(msg => {
-        if (!msg || !msg.role) return false;
-      
-        // System và user messages phải có content dạng string
-        if (msg.role === 'system' || msg.role === 'user') {
-          return msg.content && typeof msg.content === 'string' && msg.content.trim() !== '';
-        }
-      
-        // Assistant messages: chỉ chấp nhận nếu có content là string KHÔNG null
-        // hoặc có tool_calls hợp lệ (và khi đó phải bỏ content null)
-        if (msg.role === 'assistant') {
-          if (msg.tool_calls && !msg.content) {
-            msg.content = ''; // 🔧 đảm bảo luôn là string
-          }
-          return typeof msg.content === 'string';
-        }
-      
-        // Tool messages phải có string content
-        if (msg.role === 'tool') {
-          return msg.content && typeof msg.content === 'string' && msg.content.trim() !== '';
-        }
-      
-        return false;
-      });
+      const validMessages = filterValidMessages(conversation);
       
 
       // Prepare OpenAI request
@@ -209,16 +187,27 @@ class ChatController {
             // Call the function using tools_call.js
             const result = await call_function(functionName, functionArgs);
             logger.info(`Function ${functionName} completed:`, result);
-            logger.info(`Function return  ${functionName} result:`, result.data.data.result);
+            logger.info(`Function return ${functionName} result:`, result?.data?.data?.result);
+            
+            // Lấy phần data thật sự
+            const toolData = result?.data?.data ?? result?.data ?? result;
 
-              // Add tool result to conversation
-              const toolMessage = {
-                role: 'tool',
-                tool_call_id: tool_call.id,
-                name: functionName,
-                content: `Tool function ${functionName} result: ${JSON.stringify(result.data ?? result)}`,
-                time: new Date().toISOString()
-              };
+            // Nếu là search_job, format lại dữ liệu trả về (thêm URL)
+            const formattedForTool = (functionName === 'search_job' || functionName === 'searchJob')
+              ? formatSearchJobResults(toolData)
+              : toolData;
+
+            // Debug formatted data
+            logger.info(`Formatted tool data for ${functionName}:`, formattedForTool);
+
+            // Add tool result to conversation
+            const toolMessage = {
+              role: 'tool',
+              tool_call_id: tool_call.id,
+              name: functionName,
+              content: JSON.stringify(formattedForTool),  // ✅ chỉ phần data
+              time: new Date().toISOString()
+            };
             
             database.addMessage(conversationId, toolMessage);
             
@@ -233,29 +222,7 @@ class ChatController {
         logger.info('Updated conversation with tool results:', updatedConversation);
         
         // Filter updated conversation (same logic as before)
-        const validUpdatedMessages = updatedConversation.filter(msg => {
-          if (!msg || !msg.role) return false;
-        
-          // System và user messages phải có content dạng string
-          if (msg.role === 'system' || msg.role === 'user') {
-            return msg.content && typeof msg.content === 'string' && msg.content.trim() !== '';
-          }
-        
-          // Assistant messages: chỉ chấp nhận nếu có content là string KHÔNG null
-          if (msg.role === 'assistant') {
-            if (msg.tool_calls && !msg.content) {
-              msg.content = ''; // 🔧 đảm bảo luôn là string
-            }
-            return typeof msg.content === 'string';
-          }
-        
-          // Tool messages phải có string content
-          if (msg.role === 'tool') {
-            return msg.content && typeof msg.content === 'string' && msg.content.trim() !== '';
-          }
-        
-          return false;
-        });
+        const validUpdatedMessages = filterValidMessages(updatedConversation);
         
         // Make second OpenAI call with tool results
         const secondPayload = {
@@ -290,9 +257,7 @@ class ChatController {
         const finalConversation = database.getConversation(conversationId);
         
         // Only save if there are user/assistant messages (not just system)
-        const userMessages = finalConversation.filter(msg => 
-          msg.role === 'user' || msg.role === 'assistant'
-        );
+        const userMessages = filterUserMessages(finalConversation);
         
         if (userMessages.length > 0) {
           // ✅ KIỂM TRA XEM ĐÃ LƯU CHƯA ĐỂ TRÁNH LƯU TRÙNG LẶP
@@ -406,7 +371,7 @@ class ChatController {
 
       // Get conversation history from memory first
       let conversation = database.getConversation(activeConversationId);
-      let userHistory = conversation.filter(msg => msg.role !== 'system');
+      let userHistory = filterUserMessages(conversation);
       
       // If no conversation in memory, try to restore from Supabase
       if (userHistory.length === 0) {
@@ -427,7 +392,7 @@ class ChatController {
             
             // Get updated conversation
             conversation = database.getConversation(activeConversationId);
-            userHistory = conversation.filter(msg => msg.role !== 'system');
+            userHistory = filterUserMessages(conversation);
             
             logger.success(`Restored conversation from Supabase: ${activeConversationId} (${userHistory.length} messages)`);
           } else {
@@ -640,8 +605,8 @@ class ChatController {
           const supabaseConversation = await supabaseService.getConversation(conversationId);
           
           if (supabaseConversation && supabaseConversation.messages && supabaseConversation.messages.length > 0) {
-            // Filter out system messages for user display
-            const userMessages = supabaseConversation.messages.filter(msg => msg.role !== 'system');
+            // Filter out system and tool messages for user display
+            const userMessages = filterUserMessages(supabaseConversation.messages);
             
             logger.success(`Retrieved conversation from Supabase: ${conversationId} (${userMessages.length} messages)`);
             res.json(successResponse('Conversation history retrieved successfully', {

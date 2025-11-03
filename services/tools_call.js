@@ -183,6 +183,41 @@ async function delete_job(params) {
 }
 
 /**
+ * Search Jobs (user-search)
+ * Matches backend API: /api/v1/jobs/user-search
+ */
+async function search_job(params = {}) {
+  const {
+    page = 1,
+    size = 5,
+    sort = 'updatedAt,desc',
+    keyword = '',
+    minSalary = 0,
+    maxSalary = 100000000,
+    location,
+    skills,
+    level
+  } = params;
+
+  // Hard limit size to 5 regardless of caller input
+  const limitedSize = 5;
+
+  const queryParams = {
+    page,
+    size: limitedSize,
+    sort,
+    keyword,
+    minSalary,
+    maxSalary,
+    ...(location ? { location } : {}),
+    ...(skills ? { skills } : {}),
+    ...(level ? { level } : {})
+  };
+
+  return await makeApiRequest('GET', '/jobs/user-search', null, queryParams, {}, true);
+}
+
+/**
  * Company Management Functions
  */
 async function get_companies(params = {}) {
@@ -478,6 +513,8 @@ async function call_function(functionName, arguments) {
         return await get_jobs(arguments);
       case 'get_job_by_id':
         return await get_job_by_id(arguments);
+      case 'search_job':
+        return await search_job(arguments);
       case 'create_job':
         return await create_job(arguments);
       case 'update_job':
@@ -571,6 +608,7 @@ module.exports = {
   // Export individual functions for direct use
   get_jobs,
   get_job_by_id,
+  search_job,
   create_job,
   update_job,
   delete_job,
