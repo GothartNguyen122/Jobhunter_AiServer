@@ -140,72 +140,72 @@ class PDFExtractor {
    * Extract content from PDF using OpenAI Vision API
    * @param {string} pdfPath - Path to the PDF file
    * @param {number} pageNumber - Page number to process (0-indexed)
-   * @returns {Promise<Object>} Extracted data as object
+   * @returns {Promise<Object>} Extracted data as object 
    */
-  async extractFromPdf(pdfPath, pageNumber = 0) {
+  async extractFromPdf(pdfPath ,pageNumber = null) {
     try {
-      // Convert PDF to image
-      const imageBuffer = await this.convertPdfToImage(pdfPath, pageNumber);
-      
-      // Convert to base64
-      const base64Data = this.imageToBase64(imageBuffer);
-      
-      // Prepare image data for OpenAI API
-      const imageData = {
+      // 1. Lấy tổng số trang PDF
+      const pdfjsLib = require('pdfjs-dist/legacy/build/pdf.mjs');  // build NodeJS mới
+      const data = new Uint8Array(await fs.readFile(pdfPath));
+      const pdfDoc = await pdfjsLib.getDocument({ data }).promise;
+      const totalPages = pdfDoc.numPages;
+
+  
+      console.log("Total PDF pages:", totalPages);
+  
+      // 2. Convert toàn bộ trang sang ảnh PNG
+      const imageBuffers = [];
+      for (let i = 0; i < totalPages; i++) {
+        const buf = await this.convertPdfToImage(pdfPath, i);
+        imageBuffers.push(buf);
+      }
+  
+      // 3. Convert tất cả ảnh → base64
+      const imageDataArray = imageBuffers.map((buffer) => ({
         type: "image_url",
         image_url: {
-          url: `data:image/png;base64,${base64Data}`
+          url: `data:image/png;base64,${buffer.toString("base64")}`
         }
-      };
-      
-      // Get system prompt from promptManager
+      }));
+  
+      // 4. Prompt
       const systemPrompt = await config.pdfExtractor.getPrompt();
-      
-      // User prompt
-      const userPrompt = "Extract the content from this document. Return ONLY the JSON object with no additional formatting or text.";
-      
-      // Call OpenAI Vision API
+      const userPrompt =
+        "Extract structured JSON from ALL PAGES of this PDF. Return ONLY a valid JSON object.";
+  
+      // 5. Gọi OpenAI Vision API với N trang trong 1 request
       const response = await this.client.chat.completions.create({
         model: config.pdfExtractor.model,
         messages: [
-          {
-            role: "system",
-            content: systemPrompt
-          },
+          { role: "system", content: systemPrompt },
           {
             role: "user",
             content: [
-              {
-                type: "text",
-                text: userPrompt
-              },
-              imageData
+              { type: "text", text: userPrompt },
+              ...imageDataArray  // ✅ Gửi nhiều ảnh ở đây!
             ]
           }
         ],
         max_tokens: config.pdfExtractor.maxTokens,
         temperature: config.pdfExtractor.temperature
       });
-      
-      const extractedText = response.choices[0].message.content;
-      
-      // Clean the response text to extract JSON
-      let cleanedText = extractedText.trim();
-      
-      // Remove markdown code blocks if present
-      if (cleanedText.startsWith('```json')) {
-        cleanedText = cleanedText.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-      } else if (cleanedText.startsWith('```')) {
-        cleanedText = cleanedText.replace(/^```\s*/, '').replace(/\s*```$/, '');
+  
+      let extractedText = response.choices[0].message.content.trim();
+
+      // 1. Remove markdown code blocks if present
+      if (extractedText.startsWith('```json')) {
+        extractedText = extractedText.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+      } else if (extractedText.startsWith('```')) {
+        extractedText = extractedText.replace(/^```\s*/, '').replace(/\s*```$/, '');
       }
-      
-      // Parse the JSON response
+
+      // 2. Parse JSON
       let extractedData;
       try {
-        extractedData = JSON.parse(cleanedText);
+        extractedData = JSON.parse(extractedText);
       } catch (parseError) {
-        // Try to extract JSON from the response using regex
-        const jsonMatch = cleanedText.match(/\{[\s\S]*\}/);
+        // 3. Try to extract JSON from the response using regex
+        const jsonMatch = extractedText.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
           try {
             extractedData = JSON.parse(jsonMatch[0]);
@@ -217,27 +217,20 @@ class PDFExtractor {
         }
       }
 
-      // Check if the response contains an error
+      // 4. Check if the response contains an error
       if (extractedData.error) {
         throw new Error(extractedData.error);
       }
 
+      // 5. Return JSON in same structure
       return extractedData;
-      
-    } catch (error) {
-      console.error('Error processing PDF in Extractor:', error);
-      
-      if (error.code === 'insufficient_quota') {
-        throw new Error('OpenAI API quota exceeded. Please check your billing.');
-      } else if (error.code === 'invalid_api_key') {
-        throw new Error('Invalid OpenAI API key. Please check your configuration.');
-      } else if (error.message.includes('rate_limit')) {
-        throw new Error('OpenAI API rate limit exceeded. Please try again later.');
-      }
-      
-      throw new Error(`PDF extraction failed: ${error.message}`);
+
+    } catch (err) {
+      console.error("Multi-page PDF extraction error:", err);
+      throw new Error("PDF Extraction failed: " + err.message);
     }
   }
+  
 
   /**
    * Extract content from multiple pages of a PDF

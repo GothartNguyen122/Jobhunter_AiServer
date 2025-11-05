@@ -183,6 +183,15 @@ async function delete_job(params) {
 }
 
 /**
+ * Get resumes of a specific job, including count
+ * Matches backend API: GET /api/v1/jobs/resumes/{job_id}
+ */
+async function get_job_resumes(params) {
+  const { id } = params; // job id
+  return await makeApiRequest('GET', `/jobs/resumes/${id}`, null, null, {}, true);
+}
+
+/**
  * Search Jobs (user-search)
  * Matches backend API: /api/v1/jobs/user-search
  */
@@ -521,6 +530,8 @@ async function call_function(functionName, arguments) {
         return await update_job(arguments);
       case 'delete_job':
         return await delete_job(arguments);
+      case 'get_job_resumes':
+        return await get_job_resumes(arguments);
 
       // Company functions
       case 'get_companies':
@@ -612,6 +623,7 @@ module.exports = {
   create_job,
   update_job,
   delete_job,
+  get_job_resumes,
   get_companies,
   get_company_by_id,
   create_company,

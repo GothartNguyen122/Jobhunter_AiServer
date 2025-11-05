@@ -229,7 +229,7 @@ class ChatController {
           model: config.openai.model,
           messages: validUpdatedMessages,
           max_tokens: config.openai.maxTokens,
-          temperature: config.openai.temperature
+          temperature: 0.1,
         };
         logger.info('Second OpenAI request with tool results', secondPayload);
         logger.debug('Second OpenAI request with tool results', secondPayload);

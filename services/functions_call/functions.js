@@ -36,6 +36,23 @@ const functions = [
   {
     "type": "function",
     "function": {
+      "name": "get_job_resumes",
+      "description": "Get resumes for a specific job, returns count and resumes[]",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Job ID"
+          }
+        },
+        "required": ["id"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
       "name": "get_job_by_id",
       "description": "Get a specific job by ID",
       "parameters": {
