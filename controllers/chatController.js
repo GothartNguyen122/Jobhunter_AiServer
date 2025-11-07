@@ -22,32 +22,39 @@ class ChatController {
     try {
       // Handle legacy endpoint (no chatboxId in params)
       const chatboxId = req.params.chatboxId || 'default';
+      
+      // ✅ LOG NGUYÊN MẪU REQ.BODY TRƯỚC KHI SANITIZE
+      logger.info('📥 [Backend] Raw req.body (before sanitize):', JSON.stringify(req.body, null, 2));
+      
       const messageData = sanitizeObject(req.body);
+      
+      // ✅ LOG NGUYÊN MẪU MESSAGE DATA SAU KHI SANITIZE
+      logger.info('📥 [Backend] Received request from Frontend (after sanitize):', JSON.stringify(messageData, null, 2));
       
       // Validate chatboxId
       if (!chatboxId || chatboxId === 'undefined') {
-        logger.warn('Invalid chatboxId provided:', chatboxId);
+        // logger.warn('Invalid chatboxId provided:', chatboxId);
         return res.status(400).json(validationErrorResponse('Invalid chatboxId', ['chatboxId is required']));
       }
       
-      logger.chatboxRequest(chatboxId, messageData.message, messageData.user);
+      // logger.chatboxRequest(chatboxId, messageData.message, messageData.user);
 
       // Validate message data
       const validation = validateMessageData(messageData);
       if (!validation.isValid) {
-        logger.warn('Invalid message data', validation.errors);
+        // logger.warn('Invalid message data', validation.errors);
         return res.status(400).json(validationErrorResponse('Invalid message data', validation.errors));
       }
 
       // Check if chatbox exists and is enabled
       const chatbox = database.getChatboxById(chatboxId);
       if (!chatbox) {
-        logger.warn(`Chatbox not found: ${chatboxId}`);
+        // logger.warn(`Chatbox not found: ${chatboxId}`);
         return res.status(404).json(notFoundResponse(`Chatbox not found: ${chatboxId}`));
       }
 
       if (!chatbox.enabled) {
-        logger.warn(`Chatbox is disabled: ${chatboxId}`);
+        // logger.warn(`Chatbox is disabled: ${chatboxId}`);
         return res.status(403).json(errorResponse('Chatbox is currently disabled', 403));
       }
 
@@ -59,8 +66,8 @@ class ChatController {
       const sessionInfo = messageData.sessionInfo;
       
       // ✅ DEBUG LOGGING
-      logger.info(`🔍 ChatController Debug - MessageData: ${JSON.stringify(messageData)}`);
-      logger.info(`🔍 ChatController Debug - SessionInfo: ${JSON.stringify(sessionInfo)}`);
+      // logger.info(`🔍 ChatController Debug - MessageData: ${JSON.stringify(messageData)}`);
+      // logger.info(`🔍 ChatController Debug - SessionInfo: ${JSON.stringify(sessionInfo)}`);
       
       let { conversationId, isNew } = sessionService.getOrCreateSession(chatboxId, username, role, sessionInfo);
 
@@ -75,7 +82,7 @@ class ChatController {
       // If no conversation in memory but session is not new, try to restore from Supabase
       if (conversation.length === 0 && !isNew) {
         try {
-          logger.info(`Attempting to restore conversation from Supabase: ${conversationId}`);
+          // logger.info(`Attempting to restore conversation from Supabase: ${conversationId}`);
           const supabaseConversation = await supabaseService.getConversation(conversationId);
           
           if (supabaseConversation && supabaseConversation.messages) {
@@ -95,7 +102,7 @@ class ChatController {
             logger.success(`Restored conversation from Supabase: ${conversationId} (${conversation.length} messages)`);
           }
         } catch (supabaseError) {
-          logger.warn(`Failed to restore conversation from Supabase: ${supabaseError.message}`);
+          // logger.warn(`Failed to restore conversation from Supabase: ${supabaseError.message}`);
           // Continue with empty conversation
         }
       }
@@ -109,6 +116,7 @@ class ChatController {
         time: new Date().toISOString()
       };
       
+      // ✅ LƯU ĐẦY ĐỦ VÀO DATABASE (memory) ĐỂ GIỮ NGỮ CẢNH
       conversation = database.addMessage(conversationId, userMessage);
 
       // Get system prompt for this chatbox
@@ -116,7 +124,7 @@ class ChatController {
       try {
         systemPrompt = await config.systemPrompts.getById(chatbox.systemPromptId || 'default');
       } catch (error) {
-        logger.warn(`Failed to get system prompt for chatbox ${chatboxId}:`, error.message);
+        // logger.warn(`Failed to get system prompt for chatbox ${chatboxId}:`, error.message);
         // Return fallback response when system prompt is not available
         const chatController = new ChatController();
         const fallbackResponse = chatController.getFallbackResponse(messageData?.message || '', true);
@@ -154,7 +162,7 @@ class ChatController {
         tool_choice: "auto"
       };
 
-      logger.debug('OpenAI request payload', openaiPayload);
+      // logger.debug('OpenAI request payload', openaiPayload);
 
       // Call OpenAI API
       const completion = await openai.chat.completions.create(openaiPayload);
@@ -174,7 +182,7 @@ class ChatController {
 
       // Handle tool calls if present
       if (reply.tool_calls && reply.tool_calls.length > 0) {
-        logger.info(`Processing ${reply.tool_calls.length} tool calls`);
+        // logger.info(`Processing ${reply.tool_calls.length} tool calls`);
         
         // Process each tool call
         for (const tool_call of reply.tool_calls) {

@@ -1,9 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const chatController = require('../controllers/chatController');
+const chatControllerWithResume = require('../controllers/chatControllerWithResume');
 
 // Send message to specific chatbox
-router.post('/:chatboxId/message', chatController.sendMessage);
+router.post('/:chatboxId/message', (req, res) => {
+  console.log('req.body:', req.body);
+  return req.body?.hasExtractedData
+    ? chatControllerWithResume.sendMessage(req, res)
+    : chatController.sendMessage(req, res);
+});
 
 // Get conversation history for specific chatbox
 router.get('/:chatboxId/history', chatController.getConversationHistory);
@@ -29,7 +35,12 @@ router.get('/conversations/role/:role', chatController.getConversationsByRole);
 router.delete('/conversations/:conversationId', chatController.deleteConversation);
 
 // Legacy endpoints for backward compatibility
-router.post('/', chatController.sendMessage); // Legacy POST /api/v1/AiServer
+router.post('/', (req, res) => { // Legacy POST /api/v1/AiServer
+  if (req.body && req.body.hasExtractedData) {
+    return chatControllerWithResume.sendMessage(req, res);
+  }
+  return chatController.sendMessage(req, res);
+});
 router.get('/history', chatController.getLegacyConversationHistory); // Legacy GET /api/v1/AiServer/history
 router.delete('/history', chatController.clearConversationHistory); // Legacy DELETE /api/v1/AiServer/history
 

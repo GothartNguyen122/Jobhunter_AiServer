@@ -121,6 +121,12 @@ class PromptManager {
   async getCVCompatiblePrompt() {
     return await this.getPrompt('cv_compatible_prompt');
   }
+  /**
+   * Get CV score chat prompt
+   */
+  async getCVScoreChatPrompt() {
+    return await this.getPrompt('cv_score_chat');
+  }
 
   /**
    * Get all prompts

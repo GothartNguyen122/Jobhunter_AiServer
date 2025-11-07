@@ -43,6 +43,7 @@ const config = {
     getInterviewCoach: () => promptManager.getInterviewCoachPrompt(),
     getSalaryNegotiator: () => promptManager.getSalaryNegotiatorPrompt(),
     getNetworkBuilder: () => promptManager.getNetworkBuilderPrompt(),
+    getCVScoreChat: () => promptManager.getCVScoreChatPrompt(),
     getAll: () => promptManager.getAllPrompts(),
     getById: async (id) => {
       try {

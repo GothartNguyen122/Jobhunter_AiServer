@@ -1,5 +1,6 @@
 const axios = require('axios');
 const mysqlConnection = require('../config/mysql');
+const { getCVScoreChat } = require('./functions_call/get_cv_score_chat');
 
 // Base URL for Jobhunter Backend API
 const BACKEND_BASE_URL = process.env.BACKEND_BASE_URL || 'http://localhost:8080/api/v1';
@@ -208,7 +209,7 @@ async function search_job(params = {}) {
     level
   } = params;
 
-  // Hard limit size to 5 regardless of caller input
+  // Hard limit size to 5 regardless of callergr input
   const limitedSize = 5;
 
   const queryParams = {
@@ -473,6 +474,42 @@ async function ensureAuth() {
 }
 
 /**
+ * Get CV Score Chat function
+ * Calculate CV score against a job
+ */
+async function get_resumes_score_against_jobs(params) {
+  const { extractedData, jobInfo } = params;
+  
+  if (!extractedData || typeof extractedData !== 'string') {
+    return {
+      success: false,
+      error: 'Extracted data (string) is required'
+    };
+  }
+
+  if (!jobInfo || typeof jobInfo !== 'string') {
+    return {
+      success: false,
+      error: 'Job info (string) is required'
+    };
+  }
+
+  try {
+    const result = await getCVScoreChat(extractedData, jobInfo);
+    return {
+      success: true,
+      data: result
+    };
+  } catch (error) {
+    console.error('Error in get_cv_score_chat:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+/**
  * Test JWT authentication
  */
 async function test_auth() {
@@ -508,8 +545,8 @@ async function call_function(functionName, arguments) {
   console.log(`🔧 Calling function: ${functionName} with args:`, arguments);
 
   try {
-    // Ensure JWT authentication for all backend API calls (except auth functions)
-    const requiresAuth = !['login', 'register', 'test_auth'].includes(functionName);
+    // Ensure JWT authentication for all backend API calls (except auth functions and CV score chat)
+    const requiresAuth = !['login', 'register', 'test_auth', 'get_cv_score_chat'].includes(functionName);
     
     if (requiresAuth) {
       console.log(`🔐 Ensuring JWT authentication for function: ${functionName}`);
@@ -595,6 +632,10 @@ async function call_function(functionName, arguments) {
       case 'get_users_from_db':
         return await get_users_from_db(arguments);
 
+      // CV Score functions
+      case 'get_cv_score_chat':
+        return await get_cv_score_chat(arguments);
+
       // Test functions
       case 'test_auth':
         return await test_auth();
@@ -647,6 +688,7 @@ module.exports = {
   query_database,
   get_jobs_from_db,
   get_companies_from_db,
-  get_users_from_db
+  get_users_from_db,
+  get_resumes_score_against_jobs,
 };
 

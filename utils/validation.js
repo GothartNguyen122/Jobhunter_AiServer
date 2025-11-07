@@ -53,7 +53,7 @@ const validateMessageData = (data) => {
     errors.push('Message is required and must be a non-empty string');
   }
 
-  if (data.message && data.message.length > 1000) {
+  if (data.message && data.message.length > 10000) {
     errors.push('Message must be less than 1000 characters');
   }
 

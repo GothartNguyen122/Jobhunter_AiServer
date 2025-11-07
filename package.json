@@ -10,7 +10,8 @@
     "test": "node test-api.js",
     "test:supabase": "node test-supabase.js",
     "test:tools": "node test-tools.js",
-    "debug:jwt": "node debug-jwt.js"
+    "debug:jwt": "node debug-jwt.js",
+    "test:prompts": "node test-prompts.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.75.0",
