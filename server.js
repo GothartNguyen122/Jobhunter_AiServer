@@ -2,6 +2,7 @@ const App = require('./app');
 const config = require('./config');
 const logger = require('./utils/logger');
 const { testConnection } = require('./config/supabase');
+const realtimeService = require('./services/realtimeService');
 
 // Create app instance
 const appInstance = new App();
@@ -32,6 +33,8 @@ const server = app.listen(config.port, async () => {
     const isConnected = await testConnection();
     if (isConnected) {
       logger.success('✅ Supabase connection successful');
+      // Initialize realtime subscription
+      realtimeService.initializeRealtimeSubscription();
     } else {
       logger.warn('⚠️  WARNING: Supabase connection failed. Please check your SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.');
     }
@@ -47,6 +50,7 @@ const server = app.listen(config.port, async () => {
 // Graceful shutdown
 process.on('SIGTERM', () => {
   logger.info('SIGTERM received, shutting down gracefully');
+  realtimeService.cleanup();
   server.close(() => {
     logger.info('Process terminated');
     process.exit(0);
@@ -55,6 +59,7 @@ process.on('SIGTERM', () => {
 
 process.on('SIGINT', () => {
   logger.info('SIGINT received, shutting down gracefully');
+  realtimeService.cleanup();
   server.close(() => {
     logger.info('Process terminated');
     process.exit(0);

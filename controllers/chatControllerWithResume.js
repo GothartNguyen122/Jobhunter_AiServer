@@ -191,6 +191,52 @@ class ChatControllerWithResume {
       });
       const message = messageLines.join('\n\n');
 
+      // Add assistant message to conversation
+      const assistantMessage = {
+        role: 'assistant',
+        content: message,
+        time: new Date().toISOString()
+      };
+      
+      database.addMessage(conversationId, assistantMessage);
+
+      // Save conversation to Supabase (only when there are actual messages)
+      try {
+        const finalConversation = database.getConversation(conversationId);
+        
+        // Only save if there are user/assistant messages (not just system)
+        const userMessages = filterUserMessages(finalConversation);
+        
+        if (userMessages.length > 0) {
+          // ✅ KIỂM TRA XEM ĐÃ LƯU CHƯA ĐỂ TRÁNH LƯU TRÙNG LẶP
+          const existingConversation = await supabaseService.getConversation(conversationId);
+          
+          // Chỉ lưu nếu chưa có hoặc có thay đổi
+          if (!existingConversation || existingConversation.messages.length !== userMessages.length) {
+            // Format messages for Supabase with timestamps
+            const formattedMessages = finalConversation.map(msg => ({
+              role: msg.role,
+              content: msg.content,
+              time: msg.time || new Date().toISOString()
+            }));
+
+            await supabaseService.saveConversation(
+              conversationId,
+              username,
+              role,
+              formattedMessages
+            );
+            
+            logger.info(`Conversation saved to Supabase: ${conversationId}`);
+          } else {
+            logger.info(`Conversation already exists in Supabase: ${conversationId}, skipping save`);
+          }
+        }
+      } catch (supabaseError) {
+        logger.error('Failed to save conversation to Supabase:', supabaseError);
+        // Continue with response even if Supabase save fails
+      }
+
       const processingTime = Date.now() - startTime;
       return res.json(successResponse('Message processed successfully', {
         message: message,

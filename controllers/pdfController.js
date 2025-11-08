@@ -3,7 +3,8 @@ const path = require('path');
 const fs = require('fs').promises;
 const PDFExtractor = require('../services/pdf_extractor');
 const config = require('../config');
-const { successResponse, errorResponse, validationErrorResponse } = require('../utils/response');
+const database = require('../config/database');
+const { successResponse, errorResponse, validationErrorResponse, notFoundResponse } = require('../utils/response');
 const { validateFileUpload } = require('../utils/validation');
 const logger = require('../utils/logger');
 
@@ -61,6 +62,20 @@ class PDFController {
   // Extract content from PDF
   async extractFromPdf(req, res) {
     try {
+      // Check if PDF Extractor chatbox is enabled
+      const chatboxId = 'pdfextractor';
+      const chatbox = database.getChatboxById(chatboxId);
+      
+      if (!chatbox) {
+        logger.warn(`PDF Extractor chatbox not found: ${chatboxId}`);
+        return res.status(404).json(notFoundResponse(`PDF Extractor chatbox not found: ${chatboxId}`));
+      }
+
+      if (!chatbox.enabled) {
+        logger.warn(`PDF Extractor chatbox is disabled: ${chatboxId}`);
+        return res.status(403).json(errorResponse('PDF Extractor is currently disabled', 403));
+      }
+
       if (!req.file) {
         logger.warn('No file uploaded for PDF extraction');
         return res.status(400).json(errorResponse('No file uploaded', 400));
@@ -178,6 +193,20 @@ class PDFController {
   // Extract content from multiple pages
   async extractMultiplePages(req, res) {
     try {
+      // Check if PDF Extractor chatbox is enabled
+      const chatboxId = 'pdfextractor';
+      const chatbox = database.getChatboxById(chatboxId);
+      
+      if (!chatbox) {
+        logger.warn(`PDF Extractor chatbox not found: ${chatboxId}`);
+        return res.status(404).json(notFoundResponse(`PDF Extractor chatbox not found: ${chatboxId}`));
+      }
+
+      if (!chatbox.enabled) {
+        logger.warn(`PDF Extractor chatbox is disabled: ${chatboxId}`);
+        return res.status(403).json(errorResponse('PDF Extractor is currently disabled', 403));
+      }
+
       if (!req.file) {
         logger.warn('No file uploaded for multi-page PDF extraction');
         return res.status(400).json(errorResponse('No file uploaded', 400));

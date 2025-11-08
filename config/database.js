@@ -24,6 +24,17 @@ class Database {
       updatedAt: new Date()
     });
 
+    // PDF Extractor chatbox
+    this.chatboxes.set('pdfextractor', {
+      id: 'pdfextractor',
+      name: 'PDF Extractor',
+      description: 'Chatbox for extracting information from PDF documents (CVs, Resumes)',
+      enabled: true,
+      systemPromptId: 'pdf_extractor_prompt',
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+
     // Default conversation history
     this.conversations.set('default', [
       {
@@ -31,6 +42,9 @@ class Database {
         content: process.env.SYSTEM_PROMPT || 'Bạn là AI Assistant chuyên về tư vấn nghề nghiệp và tìm việc làm. Hãy trả lời một cách thân thiện, chuyên nghiệp và hữu ích.'
       }
     ]);
+
+    // PDF Extractor conversation history
+    this.conversations.set('pdfextractor', []);
   }
 
   // Chatbox methods

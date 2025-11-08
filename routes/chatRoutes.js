@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const chatController = require('../controllers/chatController');
 const chatControllerWithResume = require('../controllers/chatControllerWithResume');
+const realtimeService = require('../services/realtimeService');
+const { v4: uuidv4 } = require('uuid');
 
 // Send message to specific chatbox
 router.post('/:chatboxId/message', (req, res) => {
@@ -29,6 +31,27 @@ router.post('/:chatboxId/session/clear', chatController.clearUserSession);
 
 // Supabase conversation management endpoints
 router.get('/conversations', chatController.getAllConversations);
+// SSE endpoint for realtime conversation updates - MUST be before /:conversationId route
+router.get('/conversations/realtime', (req, res) => {
+  const clientId = uuidv4();
+  realtimeService.addClient(clientId, res);
+  
+  // Keep connection alive with heartbeat
+  const heartbeatInterval = setInterval(() => {
+    try {
+      res.write(`: heartbeat\n\n`);
+    } catch (error) {
+      clearInterval(heartbeatInterval);
+      realtimeService.removeClient(clientId);
+    }
+  }, 30000); // Send heartbeat every 30 seconds
+
+  // Cleanup on client disconnect
+  req.on('close', () => {
+    clearInterval(heartbeatInterval);
+    realtimeService.removeClient(clientId);
+  });
+});
 router.get('/conversations/:conversationId', chatController.getConversationById);
 router.get('/conversations/user/:username', chatController.getConversationsByUsername);
 router.get('/conversations/role/:role', chatController.getConversationsByRole);
