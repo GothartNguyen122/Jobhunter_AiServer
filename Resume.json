@@ -1,0 +1,190 @@
+[
+  {
+    "full_name": "Pham Duc Thanh",
+    "objective": "Data Engineer with strong skills in data pipeline design, ETL, and real-time streaming. Passionate about building scalable data infrastructures.",
+    "phone_number": "0345678123",
+    "email": "duybaoandinh@gmail.com",
+    "github": "https://github.com/thanhphamdata",
+    "university": "Ho Chi Minh University of Technology",
+    "technical_skills": [
+      "Python (< 1 year)", "SQL (< 1 year)", "Kafka (< 1 year)", "Spark (< 1 year)", "Docker (< 1 year)",
+      "Google Cloud (< 1 year)"
+    ],
+    "certificate": "Google Cloud Data Engineer",
+    "projects": [
+      {
+        "project_name": "Retail Data Warehouse",
+        "languages": ["Python", "Airflow", "BigQuery"],
+        "description": "Designed ELT pipelines on GCP using Airflow and BigQuery for a retail analytics platform, reducing reporting latency by 60%.",
+        "team_size": 4,
+        "role": "Data Engineer",
+        "duration": "Mar 2024 - Dec 2024",
+        "responsibilities": [
+          "The project established automated ELT workflows using Apache Airflow for multi-source data ingestion and integration.",
+          "BigQuery was utilized as the central data warehouse, optimized with partitioned tables and clustering to enhance query performance.",
+          "The architecture followed a modular pipeline structure separating extraction, staging, transformation, and serving layers.",
+          "DBT models were applied to create standardized fact and dimension tables for analytical reporting.",
+          "Data visualization was implemented using Looker Studio to provide sales and customer behavior insights.",
+          "Cloud Storage buckets were used for intermediate data staging and archival layers in GCP."
+        ]
+      },
+      {
+        "project_name": "LogStream",
+        "languages": ["Kafka", "Spark", "PostgreSQL"],
+        "description": "Implemented real-time log processing with Kafka Streams and Spark, enabling real-time analytics dashboards.",
+        "team_size": 5,
+        "role": "Streaming Engineer",
+        "duration": "Jul 2023 - Jan 2024",
+        "responsibilities": [
+          "The system ingested logs from distributed services through Apache Kafka for high-throughput message streaming.",
+          "Spark Structured Streaming processed and aggregated data streams in near real-time to detect anomalies and generate metrics.",
+          "Data persistence was managed using PostgreSQL with time-series partitioning for efficient storage and retrieval.",
+          "Avro schemas were introduced to maintain schema consistency across microservices and message producers.",
+          "Monitoring and alerting were configured using Prometheus and Grafana dashboards to track system performance.",
+          "The overall pipeline achieved high fault tolerance and horizontal scalability through containerized deployment."
+        ]
+      },
+      {
+        "project_name": "Healthcare ETL Platform",
+        "languages": ["Python", "DBT", "Snowflake"],
+        "description": "Built data transformations and data marts for medical record analytics.",
+        "team_size": 3,
+        "role": "ETL Developer",
+        "duration": "Jan 2025 - Present",
+        "responsibilities": [
+          "The platform implemented automated ETL pipelines for structured and semi-structured healthcare data ingestion into Snowflake.",
+          "DBT was adopted for modular data transformation, model versioning, and documentation.",
+          "Data quality validation and lineage tracking were integrated to ensure compliance with healthcare data standards.",
+          "Audit mechanisms were included to monitor data freshness, transformation success rates, and anomaly detection.",
+          "Data marts were designed to support downstream predictive modeling and analytical workloads.",
+          "Continuous integration and delivery were handled through CI/CD pipelines for seamless deployment and testing."
+        ]
+      }
+    ]
+},
+{
+    "full_name": "Nguyen Minh Triet",
+    "objective": "Fullstack Web Developer specializing in modern web technologies, microservice architecture, and cloud-native development. Experienced in building scalable, maintainable, and high-performance web applications.",
+    "phone_number": "0345678123",
+    "email": "duybaoandinh@gmail.com",
+    "github": "https://github.com/thanhphamdata",
+    "university": "Posts and Telecommunications Institute of Technology",
+    "technical_skills": [
+        "Docker","Express","JavaScript","NextJS","NodeJS","ReactJS","Redis","RESTful","SQL","Typescript"
+    ],
+    "certificate": "AWS Certified Developer - Associate",
+    "projects": [
+      {
+        "project_name": "SmartOrder - Restaurant Management System",
+        "languages": ["React", "Node.js", "PostgreSQL", "Docker"],
+        "description": "A comprehensive platform for restaurant operations, including order tracking, inventory control, and staff management.",
+        "team_size": 6,
+        "role": "Fullstack Developer",
+        "duration": "01/2024 - 09/2024",
+        "responsibilities": [
+          "The system was designed using a service-oriented architecture separating menu, order, and user management modules.",
+          "PostgreSQL was employed as the main relational database with optimized indexing for large-scale transactional queries.",
+          "RESTful APIs were implemented through Express.js for interoperability with mobile and web clients.",
+          "Containerized deployment was achieved using Docker Compose with CI/CD integration via GitHub Actions.",
+          "Frontend UI was built with React and Material UI to ensure responsive layouts and reusable components.",
+          "Real-time order updates were enabled using WebSocket-based communication channels."
+        ]
+      },
+      {
+        "project_name": "EduPath - Online Learning Platform",
+        "languages": ["Next.js", "NestJS", "MongoDB", "Redis"],
+        "description": "A learning management platform supporting online courses, video streaming, and student performance analytics.",
+        "team_size": 5,
+        "role": "Backend-Focused Fullstack Developer",
+        "duration": "May 2023 - Jan 2024",
+        "responsibilities": [
+          "The platform utilized Next.js for server-side rendering and NestJS for modular backend services.",
+          "MongoDB handled course data, student records, and access logs with Redis caching for fast retrieval.",
+          "JWT-based authentication and role-based authorization were applied across the application.",
+          "Video lecture streaming was integrated through a CDN with secure URL expiration policies.",
+          "A microservice architecture enabled independent scaling of user management and analytics services.",
+          "Monitoring and performance metrics were collected using Prometheus and Grafana dashboards."
+        ]
+      },
+      {
+        "project_name": "CityMarket - Local E-commerce Web App",
+        "languages": ["React", "Express", "MySQL", "Nginx"],
+        "description": "An online marketplace for local vendors and customers supporting multiple payment gateways and logistics tracking.",
+        "team_size": 7,
+        "role": "Fullstack Developer",
+        "duration": "Feb 2025 - Present",
+        "responsibilities": [
+          "The project implemented a modular Express backend serving product, payment, and shipping APIs.",
+          "MySQL database design followed a normalized schema with foreign key relationships for product and order data.",
+          "Frontend development utilized React with Redux Toolkit to manage client-side state and asynchronous API calls.",
+          "Payment gateway integration supported Stripe and MoMo for secure transaction handling.",
+          "Nginx reverse proxy was configured for load balancing and SSL termination.",
+          "CI/CD pipelines automated testing, linting, and deployment across development and production environments."
+        ]
+      }
+    ]
+  },
+  {
+    "full_name": "Vo Thi My Linh",
+    "objective": "Front-End Developer specializing in building responsive, accessible, and high-performance web interfaces. Experienced in implementing scalable component architectures and modern JavaScript frameworks.",
+    "phone_number": "0345678123",
+    "email": "duybaoandinh@gmail.com",
+    "github": "https://github.com/vothimylinh",
+    "university": "University of Technology and Education - The University of Da Nang",
+    "technical_skills": [
+      "Figma","HTML5","Jest","ReactJS","Redux","REST","Tailwind","Webpack"
+    ],
+    "certificate": "Meta Front-End Developer Professional Certificate",
+    "projects": [
+      {
+        "project_name": "NovaUI - Design System and Component Library",
+        "languages": ["React", "TypeScript", "Storybook", "Sass"],
+        "description": "A reusable front-end design system and component library for enterprise web applications ensuring consistent UI/UX across platforms.",
+        "team_size": 5,
+        "role": "Front-End Developer",
+        "duration": "Aug 2024 - Present",
+        "responsibilities": [
+          "The system provided a unified UI component framework compatible with React applications using TypeScript for type safety.",
+          "Storybook was used for component documentation, interactive demos, and visual testing integration.",
+          "Design tokens were introduced to synchronize colors, typography, and spacing across projects.",
+          "Sass mixins and utility classes were implemented for customizable theming and responsiveness.",
+          "Automated visual regression testing was configured using Chromatic CI integration.",
+          "The library supported accessibility standards including ARIA roles and keyboard navigation compliance."
+        ]
+      },
+      {
+        "project_name": "FlowDash - Project Management Dashboard",
+        "languages": ["React", "Redux Toolkit", "TailwindCSS", "Vite"],
+        "description": "A web-based management dashboard with real-time task tracking, analytics visualization, and team collaboration features.",
+        "team_size": 6,
+        "role": "UI Developer",
+        "duration": "Nov 2023 - Jul 2024",
+        "responsibilities": [
+          "React was used to implement a modular architecture separating UI views, containers, and reusable components.",
+          "Redux Toolkit handled global state management and API data synchronization with backend endpoints.",
+          "TailwindCSS was adopted for utility-first styling and consistent responsive layouts across screen sizes.",
+          "Data visualization components were developed using Recharts for performance analytics and progress tracking.",
+          "Vite provided a fast development environment with optimized HMR and bundling for production builds.",
+          "Cross-browser and mobile compatibility were verified through automated testing with Jest and Testing Library."
+        ]
+      },
+      {
+        "project_name": "ShopEase - E-commerce Front-End Interface",
+        "languages": ["Next.js", "React Query", "Styled Components", "GraphQL"],
+        "description": "A responsive front-end for an e-commerce platform with server-side rendering, optimized SEO, and personalized product recommendations.",
+        "team_size": 7,
+        "role": "Frontend Engineer",
+        "duration": "Apr 2023 - Oct 2023",
+        "responsibilities": [
+          "The platform utilized Next.js server-side rendering (SSR) for enhanced SEO and faster first contentful paint times.",
+          "React Query was employed for data fetching and caching to improve perceived performance.",
+          "Styled Components enabled dynamic theming with light/dark mode and maintainable CSS-in-JS architecture.",
+          "GraphQL APIs were integrated for efficient product and category queries.",
+          "Lazy loading and code splitting techniques were implemented to reduce initial load size.",
+          "Performance optimization was verified using Lighthouse metrics and Core Web Vitals tracking."
+        ]
+      }
+    ]
+  }
+  
+]

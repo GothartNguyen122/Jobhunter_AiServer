@@ -1,0 +1,3 @@
+{"input": "I love this!", "expected": "positive"}
+{"input": "It's okay.", "expected": "neutral"}
+{"input": "I hate it.", "expected": "negative"}
