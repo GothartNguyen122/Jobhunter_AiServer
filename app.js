@@ -74,8 +74,8 @@ class App {
   }
 
   setupErrorHandling() {
-    // 404 handler
-    this.app.use('*', (req, res) => {
+    // 404 handler - must be last route, use function instead of '*'
+    this.app.use((req, res) => {
       logger.warn(`404 - Route not found: ${req.method} ${req.originalUrl}`);
       res.status(404).json(errorResponse('Route not found', 404));
     });
