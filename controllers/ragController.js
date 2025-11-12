@@ -5,6 +5,7 @@ const { successResponse, errorResponse, validationErrorResponse } = require('../
 const { validateFileUpload } = require('../utils/validation');
 const logger = require('../utils/logger');
 const ragServices = require('../services/ragServices');
+const { describeIndexStats, isPineconeAvailable, deleteIndex, createIndex, PINECONE_INDEX } = require('../config/pinecone');
 
 // Custom storage using Object.assign() instead of util._extend
 // Configure multer for RAG file uploads
@@ -315,12 +316,21 @@ class RAGController {
 
       logger.info(`Starting RAG model training with ${pdfFiles.length} PDF file(s)`);
 
-      // Ensure Pinecone index exists
+      // Delete existing index and create new one for fresh training
       try {
-        await ragServices.ensureIndexExists();
-        logger.info('Pinecone index verified/created');
+        logger.info('Deleting existing Pinecone index for fresh training...');
+        await deleteIndex();
+        logger.info('Existing index deleted successfully');
+        
+        // Wait a moment to ensure index is fully deleted
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // Create new index
+        logger.info('Creating new Pinecone index...');
+        await createIndex(PINECONE_INDEX, 3072);
+        logger.info('New Pinecone index created successfully');
       } catch (indexError) {
-        logger.error('Error ensuring Pinecone index:', indexError);
+        logger.error('Error managing Pinecone index:', indexError);
         
         // Provide more helpful error message
         let errorMessage = indexError.message;
@@ -328,7 +338,7 @@ class RAGController {
           errorMessage = 'Pinecone is not configured. Please create a .env file from env.template and set PINECONE_API_KEY, PINECONE_INDEX, and PINECONE_NAMESPACE.';
         }
         
-        return res.status(500).json(errorResponse('Failed to initialize Pinecone index', 500, {
+        return res.status(500).json(errorResponse('Failed to manage Pinecone index', 500, {
           error: errorMessage,
           hint: 'Make sure you have created a .env file with PINECONE_API_KEY, PINECONE_INDEX, and PINECONE_NAMESPACE configured. See env.template for reference.'
         }));
@@ -491,6 +501,97 @@ class RAGController {
     } catch (error) {
       logger.error('Vector store sync error:', error);
       res.status(500).json(errorResponse('Sync failed', 500, {
+        error: error.message
+      }));
+    }
+  }
+
+  /**
+   * Get model statistics - Information about trained model from Pinecone
+   * GET /admin/chatbox-admin/rag/model
+   */
+  async getModelStats(req, res) {
+    try {
+      if (!isPineconeAvailable()) {
+        return res.status(503).json(errorResponse('Pinecone is not configured', 503, {
+          hint: 'Please set PINECONE_API_KEY in .env'
+        }));
+      }
+
+      // Get index statistics from Pinecone
+      let indexStats = null;
+      try {
+        indexStats = await describeIndexStats();
+      } catch (statsError) {
+        logger.warn('Could not get index stats:', statsError.message);
+        // Continue even if stats fail
+      }
+
+      // Get list of files and their indexed status
+      const ragsDir = path.join(__dirname, '../uploads/rags');
+      let files = [];
+      let indexedNamespaces = [];
+
+      try {
+        await fs.access(ragsDir);
+        const fileList = await fs.readdir(ragsDir);
+        const pdfFiles = fileList.filter(file => path.extname(file).toLowerCase() === '.pdf');
+        const fileNamesWithoutExt = pdfFiles.map(file => path.basename(file, path.extname(file)));
+        
+        // Get indexed namespaces
+        indexedNamespaces = await ragServices.getIndexedNamespaces(fileNamesWithoutExt);
+
+        // Get file details
+        files = await Promise.all(
+          pdfFiles.map(async (filename) => {
+            const filePath = path.join(ragsDir, filename);
+            const stats = await fs.stat(filePath);
+            const fileNameWithoutExt = path.basename(filename, path.extname(filename));
+            
+            return {
+              filename,
+              size: stats.size,
+              uploadedAt: stats.birthtime.toISOString(),
+              indexed: indexedNamespaces.includes(fileNameWithoutExt),
+              namespace: fileNameWithoutExt
+            };
+          })
+        );
+      } catch (dirError) {
+        logger.warn('Could not read files directory:', dirError.message);
+        // Continue even if directory doesn't exist
+      }
+
+      // Prepare response
+      const modelInfo = {
+        indexName: PINECONE_INDEX,
+        indexStats: indexStats ? {
+          totalVectors: indexStats.totalRecordCount || 0,
+          dimension: indexStats.dimension || 3072,
+          namespaces: indexStats.namespaces ? Object.keys(indexStats.namespaces).length : 0,
+          namespaceStats: indexStats.namespaces || {}
+        } : null,
+        files: {
+          total: files.length,
+          indexed: indexedNamespaces.length,
+          notIndexed: files.length - indexedNamespaces.length,
+          list: files
+        },
+        summary: {
+          totalFiles: files.length,
+          indexedFiles: indexedNamespaces.length,
+          totalVectors: indexStats?.totalRecordCount || 0,
+          totalNamespaces: indexStats?.namespaces ? Object.keys(indexStats.namespaces).length : indexedNamespaces.length
+        }
+      };
+
+      logger.info(`Model stats retrieved: ${modelInfo.summary.indexedFiles} indexed files, ${modelInfo.summary.totalVectors} total vectors`);
+
+      res.json(successResponse('Model statistics retrieved successfully', modelInfo));
+
+    } catch (error) {
+      logger.error('Error getting model stats:', error);
+      res.status(500).json(errorResponse('Failed to get model statistics', 500, {
         error: error.message
       }));
     }

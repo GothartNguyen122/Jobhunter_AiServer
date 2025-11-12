@@ -32,5 +32,11 @@ router.post('/sync', (req, res) => {
   ragController.syncVectorStore(req, res);
 });
 
+// Get model statistics - Information about trained model from Pinecone
+// GET /admin/chatbox-admin/rag/model
+router.get('/model', (req, res) => {
+  ragController.getModelStats(req, res);
+});
+
 module.exports = router;
 

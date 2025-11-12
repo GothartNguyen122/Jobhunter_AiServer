@@ -183,6 +183,84 @@ async function initializeIndex(indexName = PINECONE_INDEX, dimension = 3072) {
 }
 
 /**
+ * Delete Pinecone index
+ * @param {string} indexName - Index name (default: from env)
+ * @returns {Promise<boolean>} True if index was deleted successfully
+ */
+async function deleteIndex(indexName = PINECONE_INDEX) {
+  if (!isPineconeAvailable()) {
+    throw new Error('Pinecone is not configured. Please set PINECONE_API_KEY in .env');
+  }
+
+  if (!indexName) {
+    throw new Error('Index name is required. Please set PINECONE_INDEX in .env');
+  }
+
+  try {
+    // Check if index exists first
+    const existingIndex = await checkIndexExists(indexName);
+    
+    if (!existingIndex) {
+      logger.info(`Pinecone index "${indexName}" does not exist. Nothing to delete.`);
+      return true;
+    }
+
+    logger.info(`Deleting Pinecone index "${indexName}"...`);
+    await pineconeClient.deleteIndex(indexName);
+    
+    // Wait a bit for index to be fully deleted (Pinecone may need time)
+    // Check if index is deleted by polling
+    let deleted = false;
+    let attempts = 0;
+    const maxAttempts = 10; // Wait up to 10 seconds
+    
+    while (!deleted && attempts < maxAttempts) {
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+      const stillExists = await checkIndexExists(indexName);
+      if (!stillExists) {
+        deleted = true;
+      }
+      attempts++;
+    }
+
+    if (deleted) {
+      logger.info(`Pinecone index "${indexName}" deleted successfully`);
+    } else {
+      logger.warn(`Pinecone index "${indexName}" deletion initiated but may still be processing`);
+    }
+
+    return true;
+  } catch (error) {
+    logger.error(`Error deleting Pinecone index "${indexName}":`, error.message);
+    throw new Error(`Failed to delete index: ${error.message}`);
+  }
+}
+
+/**
+ * Get index statistics from Pinecone
+ * @param {string} indexName - Index name (default: from env)
+ * @returns {Promise<Object>} Index statistics
+ */
+async function describeIndexStats(indexName = PINECONE_INDEX) {
+  if (!isPineconeAvailable()) {
+    throw new Error('Pinecone is not configured. Please set PINECONE_API_KEY in .env');
+  }
+
+  if (!indexName) {
+    throw new Error('Index name is required. Please set PINECONE_INDEX in .env');
+  }
+
+  try {
+    const index = getIndex(indexName);
+    const stats = await index.describeIndexStats();
+    return stats;
+  } catch (error) {
+    logger.error(`Error getting index stats for "${indexName}":`, error.message);
+    throw new Error(`Failed to get index stats: ${error.message}`);
+  }
+}
+
+/**
  * Test Pinecone connection
  * @returns {Promise<boolean>} True if connection is successful
  */
@@ -210,7 +288,9 @@ module.exports = {
   getIndex,
   checkIndexExists,
   createIndex,
+  deleteIndex,
   initializeIndex,
+  describeIndexStats,
   testConnection,
   PINECONE_INDEX,
   PINECONE_DEFAULT_NAMESPACE
