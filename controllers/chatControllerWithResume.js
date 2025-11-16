@@ -9,8 +9,7 @@ const logger = require('../utils/logger');
 const functions = require('../services/functions_call/functions');
 const { call_function } = require('../services/tools_call');
 const { getCVScoreChat } = require('../services/functions_call/get_cv_score_chat');
-const { formatSearchJobResults } = require('../services/functions_call/support_functions');
-
+const { formatSearchJobResults, stripHtmlTags } = require('../services/functions_call/support_functions');
 // Initialize OpenAI client
 const openai = new OpenAI({
   apiKey: config.openai.apiKey,
@@ -103,13 +102,13 @@ class ChatControllerWithResume {
       //Frist Request OpenAI API 
       //Start xử lý theo quy trình mới:
       // 1) Gọi OpenAI để trích xuất keyword việc làm từ user input (đã chứa Resumes Information)
-      const keywordInstruction = 'Hãy trích xuất keyWord liên quan việc làm (ví dụ: Front_End). Chỉ trả về chuỗi keyword ngắn gọn, không giải thích thêm.';
+      const keywordInstruction = 'Extract job-related keywords (e.g., Front_End). Return only a short keyword string without additional explanation.';
       const keywordPrompt = `${keywordInstruction}\n\n${messageForOpenAI}`;
 
       const keywordResponse = await openai.chat.completions.create({
         model: config.openai.model,
         messages: [
-          { role: 'system', content: 'Bạn là trợ lý trích xuất từ khóa công việc. Luôn trả về 1-3 từ khóa ngắn gọn, cách nhau bởi dấu phẩy.' },
+          { role: 'system', content: 'You are a job-keyword extraction assistant. Always return 1 to 3 short keywords, separated by commas.' },
           { role: 'user', content: keywordPrompt }
         ],
         max_tokens: 64,
@@ -121,32 +120,35 @@ class ChatControllerWithResume {
       const keywords = keywordText.split(',').map(k => k.trim()).filter(k => k.length > 0);
       const primaryKeyword = keywords[0] || keywordText;
 
+      console.log('keywordText:', keywordText);
+
       // 2) Gọi function search_job với keyword vừa tạo, lấy mảng id của job
       const searchArgs = { keyword: primaryKeyword, page: 1, size: 5 };
       const searchResult = await call_function('search_job', searchArgs);
       const toolData = searchResult?.data?.data ?? searchResult?.data ?? searchResult;
+
+      console.log("toolData:", toolData);
       // Lấy danh sách id và name
       const jobList = toolData?.result?.map(({ id, name }) => ({ id, name })) || [];
 
-     for (const job of jobList) {
-        // console.log(`Fetching job id: ${job.id} (${job.name})`);
-        
+      console.log("jobList:", jobList);
+
+     for (const job of jobList) {       
         const result = await call_function('get_job_by_id', { id: job.id });
-        
         const data = result?.data?.data;
-
         if (!data) continue;
-
         // Trích xuất thông tin cần thiết
         const jobInfo = {
             name: data.name,
             location: data.location,
             level: data.level,
-            description: data.description,
+            description: stripHtmlTags(data.description),
             companyName: data.company?.name || null,
             skills: data.skills?.map(skill => skill.name) || []
         };
         const jobInfoString = JSON.stringify(jobInfo, null, 0);
+
+        console.log("jobInfoString:", jobInfoString);
 
         // assign secondeRequest OpenAI API combine jobInfoString and messageForOpenAI to messageForOpenAI
         const resumesInfo = messageData.message;
@@ -182,12 +184,13 @@ class ChatControllerWithResume {
       
       console.log('formattedJobList with score:', jobListWithScore);
 
-      // Format message thành string cho mỗi job
-      const messageLines = jobListWithScore.map(job => {
+      // Format message thành string cho mỗi job với danh sách có thứ tự và in đậm bằng markdown
+      const messageLines = jobListWithScore.map((job, index) => {
         const name = job.name || 'N/A';
         const score = job.score !== null && job.score !== undefined ? job.score : 'N/A';
         const url = job.url || 'N/A';
-        return `"Tên Công Việc": ${name}\n"Điểm đánh giá": ${score}\n"Links": ${url}`;
+        // Sử dụng markdown syntax: **text** để in đậm
+        return `${index + 1}. **${name}**\n   **Điểm đánh giá:** ${score}\n   **Chi tiết:** ${url}`;
       });
       const message = messageLines.join('\n\n');
 

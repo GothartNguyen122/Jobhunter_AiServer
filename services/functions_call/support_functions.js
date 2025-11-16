@@ -49,6 +49,80 @@ function buildJobUrl(jobName, jobId) {
   return `${baseUrl}/job/${slug}?id=${jobId}`;
 }
 
+// Strip HTML tags and decode HTML entities while preserving Word-like formatting
+function stripHtmlTags(htmlString) {
+  if (!htmlString || typeof htmlString !== 'string') return '';
+  
+  let text = htmlString;
+  
+  // Step 1: Replace block-level elements with newlines before removing tags
+  // Headings - add newline before and after
+  text = text.replace(/<\/h([1-6])>/gi, '\n\n');
+  text = text.replace(/<h([1-6])[^>]*>/gi, '\n');
+  
+  // List items - add bullet point and newline
+  text = text.replace(/<li[^>]*>/gi, '\n• ');
+  text = text.replace(/<\/li>/gi, '');
+  
+  // Paragraphs and divs - add newline
+  text = text.replace(/<\/p>/gi, '\n\n');
+  text = text.replace(/<p[^>]*>/gi, '\n');
+  text = text.replace(/<\/div>/gi, '\n');
+  text = text.replace(/<div[^>]*>/gi, '\n');
+  
+  // Unordered and ordered lists - add newline
+  text = text.replace(/<\/ul>/gi, '\n');
+  text = text.replace(/<ul[^>]*>/gi, '\n');
+  text = text.replace(/<\/ol>/gi, '\n');
+  text = text.replace(/<ol[^>]*>/gi, '\n');
+  
+  // Line breaks
+  text = text.replace(/<br\s*\/?>/gi, '\n');
+  text = text.replace(/<\/br>/gi, '\n');
+  
+  // Step 2: Decode HTML entities
+  const htmlEntityMap = {
+    '&amp;': '&',
+    '&lt;': '<',
+    '&gt;': '>',
+    '&quot;': '"',
+    '&#39;': "'",
+    '&nbsp;': ' ',
+    '&apos;': "'"
+  };
+  
+  // Decode common HTML entities
+  Object.keys(htmlEntityMap).forEach(entity => {
+    const regex = new RegExp(entity, 'g');
+    text = text.replace(regex, htmlEntityMap[entity]);
+  });
+  
+  // Decode numeric entities (&#123; or &#x7B;)
+  text = text.replace(/&#(\d+);/g, (match, dec) => {
+    return String.fromCharCode(parseInt(dec, 10));
+  });
+  
+  text = text.replace(/&#x([a-f\d]+);/gi, (match, hex) => {
+    return String.fromCharCode(parseInt(hex, 16));
+  });
+  
+  // Step 3: Remove all remaining HTML tags
+  text = text.replace(/<[^>]*>/g, '');
+  
+  // Step 4: Normalize whitespace but preserve newlines
+  // Replace multiple spaces with single space (but keep newlines)
+  text = text.replace(/[ \t]+/g, ' ');
+  // Replace 3+ newlines with 2 newlines (max 2 blank lines)
+  text = text.replace(/\n{3,}/g, '\n\n');
+  // Remove spaces at start/end of lines
+  text = text.replace(/[ \t]+$/gm, '');
+  text = text.replace(/^[ \t]+/gm, '');
+  // Trim start and end
+  text = text.trim();
+  
+  return text;
+}
+
 // Format tool data from search_job into simplified items with URL
 function formatSearchJobResults(toolData) {
   // toolData might be { meta, result } or already an array
@@ -61,10 +135,12 @@ function formatSearchJobResults(toolData) {
   return jobs.map((job) => {
     const id = job?.id ?? job?.jobId ?? null;
     const name = job?.name ?? job?.title ?? '';
+    const rawDescription = job?.description ?? job?.desc ?? '';
+    
     return {
       id,
       name,
-      description: job?.description ?? job?.desc ?? '',
+      description: stripHtmlTags(rawDescription),
       salary: job?.salary ?? null,
       location: job?.location ?? '',
       level: job?.level ?? '',
@@ -79,7 +155,8 @@ function formatSearchJobResults(toolData) {
 module.exports = {
   convertSlug,
   formatSearchJobResults,
-  buildJobUrl
+  buildJobUrl,
+  stripHtmlTags,
 };
 
 
