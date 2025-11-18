@@ -8,6 +8,7 @@ const pdfRoutes = require('./pdfRoutes');
 const healthRoutes = require('./healthRoutes');
 const compareJobCVRoutes = require('./compareJobCVRoutes');
 const ragRoutes = require('./ragRoutes');
+const recommendationRoutes = require('./recommendationRoutes');
 
 // API version prefix
 const API_VERSION = '/api/v1';
@@ -18,6 +19,7 @@ router.use(`${API_VERSION}/chat`, chatRoutes);
 router.use(`${API_VERSION}/pdf`, pdfRoutes);
 router.use(`${API_VERSION}/health`, healthRoutes);
 router.use(`${API_VERSION}/cv_compatible`, compareJobCVRoutes);
+router.use(`${API_VERSION}/recommendations`, recommendationRoutes);
 
 // RAG routes for frontend admin panel
 router.use('/admin/chatbox-admin/rag', ragRoutes);
@@ -39,6 +41,7 @@ router.get('/', (req, res) => {
       pdf: `${API_VERSION}/pdf`,
       health: `${API_VERSION}/health`,
       cv_compatible: `${API_VERSION}/cv_compatible`,
+      recommendations: `${API_VERSION}/recommendations`,
       rag: '/admin/chatbox-admin/rag'
     }
   });
