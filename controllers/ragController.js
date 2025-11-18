@@ -115,6 +115,18 @@ class RAGController {
             uploadedAt: new Date().toISOString()
           };
 
+          if (file.mimetype === 'application/pdf') {
+            try {
+              const previewText = await ragServices.extractTextFromPDF(file.path);
+              fileInfo.preview = previewText.slice(0, 500);
+            } catch (parseError) {
+              logger.warn('Failed to parse uploaded PDF before chunking', {
+                filename: file.originalname,
+                error: parseError.message
+              });
+            }
+          }
+
           uploadedFiles.push(fileInfo);
 
           logger.info('RAG file uploaded successfully', {

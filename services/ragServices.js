@@ -1,6 +1,6 @@
 const fs = require('fs').promises;
 const path = require('path');
-const pdfjsLib = require('pdfjs-dist/legacy/build/pdf.mjs');
+const pdfParse = require('pdf-parse');
 const OpenAI = require('openai');
 const config = require('../config');
 const { getIndex, isPineconeAvailable, initializeIndex, PINECONE_INDEX, PINECONE_DEFAULT_NAMESPACE } = require('../config/pinecone');
@@ -23,36 +23,13 @@ const openai = new OpenAI({
  */
 async function extractTextFromPDF(filePath) {
   try {
-    // Read PDF file as buffer
     const dataBuffer = await fs.readFile(filePath);
-    
-    // Convert Buffer to Uint8Array as required by pdfjs-dist
-    const uint8Array = new Uint8Array(dataBuffer);
-    
-    // Load PDF document
-    const loadingTask = pdfjsLib.getDocument({ data: uint8Array });
-    const pdfDocument = await loadingTask.promise;
-    
-    const numPages = pdfDocument.numPages;
-    const textContents = [];
-    
-    // Extract text from each page
-    for (let pageNum = 1; pageNum <= numPages; pageNum++) {
-      const page = await pdfDocument.getPage(pageNum);
-      const textContent = await page.getTextContent();
-      
-      // Combine all text items from the page
-      const pageText = textContent.items
-        .map(item => item.str)
-        .join(' ');
-      
-      textContents.push(pageText);
+    const pdfData = await pdfParse(dataBuffer);
+    const textContent = (pdfData?.text || '').trim();
+    if (!textContent) {
+      throw new Error('No textual content detected in PDF.');
     }
-    
-    // Join all pages with newline
-    const fullText = textContents.join('\n\n');
-    
-    return fullText;
+    return textContent;
   } catch (error) {
     throw new Error(`Failed to extract text from PDF: ${error.message}`);
   }
@@ -350,6 +327,124 @@ async function processPDFWithEmbeddings(filePath, chunkSize, overlapSize, embedd
   }
 }
 
+/**
+ * Retrieve contextual chunks from Pinecone vector database and return an answer string
+ * @param {string} queryText - User query to embed and search with
+ * @param {Object} options - Optional settings such as namespace/index overrides
+ * @returns {Promise<string>} Answer generated strictly from retrieved context
+ */
+async function generateAnswerFromChunks(question, chunks, {
+  llmModel = 'gpt-4o-mini',
+  temperature = 0.2,
+  maxTokens = 512
+} = {}) {
+  const context = chunks.join('\n\n').trim();
+  const systemMessage = 'You are an AI that answers questions strictly based on the provided context. If the context does not contain enough information, respond with "I do not have enough info to answer this question."';
+  const userMessage = `Context: ${context}\n\nQuestion: ${question.trim()}`;
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: llmModel,
+      temperature: Number.isFinite(temperature) ? temperature : 0.2,
+      max_tokens: parseInt(maxTokens, 10) || 512,
+      messages: [
+        { role: 'system', content: systemMessage },
+        { role: 'user', content: userMessage }
+      ]
+    });
+
+    return completion?.choices?.[0]?.message?.content?.trim() || '';
+  } catch (error) {
+    logger.error('Failed to generate answer from chunks:', error);
+    throw new Error(`Failed to generate answer: ${error.message}`);
+  }
+}
+
+async function retrieveContextFromVector(queryText, options = {}) {
+  if (!isPineconeAvailable()) {
+    throw new Error('Pinecone is not configured. Please set PINECONE_API_KEY in .env');
+  }
+
+  if (!queryText || typeof queryText !== 'string' || queryText.trim().length === 0) {
+    throw new Error('A non-empty query/question string is required.');
+  }
+
+  const {
+    namespace: namespaceOption,
+    indexName: indexNameOption,
+    topK: topKOption,
+    embeddingModel = 'text-embedding-3-large',
+    llmModel = 'gpt-4o-mini',
+    temperature = 0.2,
+    maxTokens = 512
+  } = options;
+
+  const namespace = (namespaceOption || PINECONE_DEFAULT_NAMESPACE || '').trim();
+  if (!namespace) {
+    throw new Error('Namespace is required. Provide namespace in options or configure PINECONE_NAMESPACE.');
+  }
+
+  const indexName = (indexNameOption || PINECONE_INDEX || '').trim();
+  if (!indexName) {
+    throw new Error('Index name is required. Provide indexName in options or configure PINECONE_INDEX.');
+  }
+
+  let topK = typeof topKOption === 'number' ? topKOption : parseInt(topKOption || 5, 10);
+  if (Number.isNaN(topK) || topK <= 0) {
+    topK = 5;
+  }
+  topK = Math.min(Math.max(topK, 1), 20);
+
+  await ensureIndexExists(indexName, 3072);
+
+  const namespaceExists = await checkNamespaceExists(namespace, indexName);
+  if (!namespaceExists) {
+    throw new Error(`Namespace "${namespace}" does not exist in Pinecone index "${indexName}".`);
+  }
+  console.log("queryText:"+ queryText);
+  let queryVector;
+  try {
+    const embeddingResponse = await openai.embeddings.create({
+      model: embeddingModel,
+      input: queryText.trim()
+    });
+    queryVector = embeddingResponse.data[0].embedding;
+  } catch (error) {
+    logger.error('Failed to create embedding for query:', error);
+    throw new Error(`Failed to create embedding for query: ${error.message}`);
+  }
+
+  const index = getIndex(indexName);
+
+  let pineconeResponse;
+  try {
+    pineconeResponse = await index.namespace(namespace).query({
+      vector: queryVector,
+      topK,
+      includeMetadata: true,
+      includeValues: false
+    });
+  } catch (error) {
+    logger.error('Failed to query Pinecone for context:', error);
+    throw new Error(`Failed to query Pinecone: ${error.message}`);
+  }
+
+  const matches = Array.isArray(pineconeResponse?.matches) ? pineconeResponse.matches : [];
+  const segments = matches
+    .map(match => match?.metadata?.chunk)
+    .filter(chunk => typeof chunk === 'string' && chunk.trim().length > 0);
+
+  if (segments.length === 0) {
+    return 'I do not have enough info to answer this question.';
+  }
+
+  return generateAnswerFromChunks(queryText, segments, {
+    llmModel,
+    temperature,
+    maxTokens
+  });
+}
+
 // Export functions for internal use within this service
 // These functions can be used by other modules that import this service
 module.exports = {
@@ -361,6 +456,8 @@ module.exports = {
   checkNamespaceExists,
   getIndexedNamespaces,
   processPDF,
-  processPDFWithEmbeddings
+  processPDFWithEmbeddings,
+  retrieveContextFromVector,
+  generateAnswerFromChunks
 };
 
