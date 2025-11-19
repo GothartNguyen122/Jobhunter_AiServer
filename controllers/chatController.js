@@ -9,6 +9,7 @@ const logger = require('../utils/logger');
 const functions = require('../services/functions_call/functions');
 const { call_function } = require('../services/tools_call');
 const { formatSearchJobResults } = require('../services/functions_call/support_functions');
+const ragServices = require('../services/ragServices');
 
 // Initialize OpenAI client
 const openai = new OpenAI({
@@ -66,7 +67,7 @@ class ChatController {
       const sessionInfo = messageData.sessionInfo;
       
       // ✅ DEBUG LOGGING
-      // logger.info(`🔍 ChatController Debug - MessageData: ${JSON.stringify(messageData)}`);
+      logger.info(`🔍 ChatController Debug - MessageData: ${JSON.stringify(messageData)}`);
       // logger.info(`🔍 ChatController Debug - SessionInfo: ${JSON.stringify(sessionInfo)}`);
       
       let { conversationId, isNew } = sessionService.getOrCreateSession(chatboxId, username, role, sessionInfo);
@@ -119,6 +120,31 @@ class ChatController {
       // ✅ LƯU ĐẦY ĐỦ VÀO DATABASE (memory) ĐỂ GIỮ NGỮ CẢNH
       conversation = database.addMessage(conversationId, userMessage);
 
+      // Retrieve RAG context after capturing user message
+      let ragRetrievalAnswer = null;
+      if (messageData?.message) {
+        try {
+          ragRetrievalAnswer = await ragServices.retrieveContextFromVector(messageData.message);
+          const normalizedRagAnswer = (ragRetrievalAnswer || '').trim();
+          const ragInsufficient = normalizedRagAnswer.toLowerCase().includes('i do not have enough info to answer this question');
+          
+          if (normalizedRagAnswer.length > 0 && !ragInsufficient) {
+            const ragAssistantMessage = {
+              role: 'assistant',
+              content: `RAG Retrieval Information: ${normalizedRagAnswer}`,
+              time: new Date().toISOString()
+            };
+            // conversation = database.addMessage(conversationId, ragAssistantMessage);
+            ragRetrievalAnswer = normalizedRagAnswer;
+          } else {
+            ragRetrievalAnswer = null;
+          }
+        } catch (ragError) {
+          ragRetrievalAnswer = null;
+          logger.warn('RAG retrieval failed:', ragError.message);
+        }
+      }
+
       // Get system prompt for this chatbox
       let systemPrompt;
       try {
@@ -150,12 +176,22 @@ class ChatController {
 
       // Filter out any messages with invalid content
       const validMessages = filterValidMessages(conversation);
-      
 
+      // Clone messages for OpenAI call so we can append RAG info to latest user turn
+      const openaiMessages = validMessages.map(message => ({ ...message }));
+      if (ragRetrievalAnswer) {
+        for (let i = openaiMessages.length - 1; i >= 0; i--) {
+          if (openaiMessages[i].role === 'user') {
+            openaiMessages[i].content = `${openaiMessages[i].content}\n\nRAG Retrieval Information: ${ragRetrievalAnswer}`;
+            break;
+          }
+        }
+      }
+      
       // Prepare OpenAI request
       const openaiPayload = {
         model: config.openai.model,
-        messages: validMessages,
+        messages: openaiMessages,
         max_tokens: config.openai.maxTokens,
         temperature: config.openai.temperature,
         tools: functions,
