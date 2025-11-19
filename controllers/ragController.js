@@ -5,7 +5,8 @@ const { successResponse, errorResponse, validationErrorResponse } = require('../
 const { validateFileUpload } = require('../utils/validation');
 const logger = require('../utils/logger');
 const ragServices = require('../services/ragServices');
-const { describeIndexStats, isPineconeAvailable, deleteIndex, createIndex, PINECONE_INDEX } = require('../config/pinecone');
+const namespaceManager = require('../utils/namespaceManager');
+const { describeIndexStats, isPineconeAvailable, deleteIndex, createIndex, PINECONE_INDEX, PINECONE_DEFAULT_NAMESPACE } = require('../config/pinecone');
 
 // Custom storage using Object.assign() instead of util._extend
 // Configure multer for RAG file uploads
@@ -213,17 +214,18 @@ class RAGController {
       // Filter only PDF files for indexing check
       const pdfFiles = files.filter(file => path.extname(file).toLowerCase() === '.pdf');
       
-      // Get indexed namespaces from Pinecone
-      const fileNamesWithoutExt = pdfFiles.map(file => path.basename(file, path.extname(file)));
-      const indexedNamespaces = await ragServices.getIndexedNamespaces(fileNamesWithoutExt);
+      // Get namespace from storage file, fallback to env
+      const sharedNamespace = await namespaceManager.getNamespaceWithFallback();
+      const namespaceExists = await ragServices.checkNamespaceExists(sharedNamespace);
       
       // Get file details with indexed status
+      // With shared namespace, all PDF files share the same indexed status
       const fileList = await Promise.all(
         files.map(async (filename) => {
           const filePath = path.join(ragsDir, filename);
           const stats = await fs.stat(filePath);
-          const fileNameWithoutExt = path.basename(filename, path.extname(filename));
-          const isIndexed = indexedNamespaces.includes(fileNameWithoutExt);
+          const isPdf = path.extname(filename).toLowerCase() === '.pdf';
+          const isIndexed = isPdf && namespaceExists; // Only PDFs can be indexed
           
           return {
             filename,
@@ -231,17 +233,20 @@ class RAGController {
             size: stats.size,
             uploadedAt: stats.birthtime.toISOString(),
             modifiedAt: stats.mtime.toISOString(),
-            indexed: isIndexed
+            indexed: isIndexed,
+            namespace: isPdf ? sharedNamespace : null
           };
         })
       );
 
-      logger.info(`Retrieved ${fileList.length} RAG files, ${indexedNamespaces.length} indexed`);
+      const indexedCount = fileList.filter(f => f.indexed).length;
+      logger.info(`Retrieved ${fileList.length} RAG files, ${indexedCount} indexed in namespace "${sharedNamespace}"`);
       
       res.json(successResponse('RAG files retrieved successfully', {
         files: fileList,
         count: fileList.length,
-        indexedCount: indexedNamespaces.length
+        indexedCount: indexedCount,
+        namespace: sharedNamespace
       }));
 
     } catch (error) {
@@ -360,9 +365,11 @@ class RAGController {
       const errors = [];
       let totalChunks = 0;
       let totalEmbeddings = 0;
-      let totalStored = 0;
+      
+      // Collect all embeddings from all files into a single array
+      const allEmbeddings = [];
 
-      // Process each PDF file
+      // Process each PDF file and collect embeddings
       for (const filename of pdfFiles) {
         const filePath = path.join(ragsDir, filename);
         
@@ -382,29 +389,74 @@ class RAGController {
 
           logger.info(`Created ${embeddingCount} embeddings for ${filename}`);
 
-          // Store embeddings in Pinecone
-          // Use filename (without extension) as namespace to separate documents
-          const namespace = path.basename(filename, path.extname(filename));
-          const storeResult = await ragServices.storeEmbeddings(embeddings, namespace);
+          // Add filename metadata to each embedding and add to allEmbeddings array
+          const embeddingsWithMetadata = embeddings.map(embedding => ({
+            ...embedding,
+            filename: filename, // Add filename to metadata
+            source: path.basename(filename, path.extname(filename)) // Add source (filename without extension)
+          }));
 
-          totalStored += storeResult.storedCount;
+          allEmbeddings.push(...embeddingsWithMetadata);
 
           results.push({
             filename,
             chunkCount,
             embeddingCount,
-            storedCount: storeResult.storedCount,
-            namespace,
             status: 'success'
           });
 
-          logger.info(`Successfully stored ${storeResult.storedCount} embeddings for ${filename} in namespace "${namespace}"`);
+          logger.info(`Collected ${embeddingCount} embeddings from ${filename} for batch storage`);
 
         } catch (fileError) {
           logger.error(`Error processing file ${filename}:`, fileError);
           errors.push({
             filename,
             error: fileError.message,
+            status: 'failed'
+          });
+        }
+      }
+
+      // Store all embeddings in a single namespace
+      let totalStored = 0;
+      if (allEmbeddings.length > 0) {
+        try {
+          // Get namespace from storage file, fallback to env
+          const sharedNamespace = await namespaceManager.getNamespaceWithFallback();
+          
+          logger.info(`Storing ${allEmbeddings.length} total embeddings to shared namespace "${sharedNamespace}"`);
+          
+          const storeResult = await ragServices.storeEmbeddings(
+            allEmbeddings, 
+            sharedNamespace,
+            PINECONE_INDEX,
+            0 // Start ID index from 0
+          );
+
+          totalStored = storeResult.storedCount;
+          
+          logger.info(`Successfully stored ${totalStored} embeddings from ${results.length} file(s) in shared namespace "${sharedNamespace}"`);
+
+          // Save namespace to file for future use
+          try {
+            await namespaceManager.saveNamespace(sharedNamespace, PINECONE_INDEX);
+            logger.info(`Saved namespace "${sharedNamespace}" to namespace.js`);
+          } catch (saveError) {
+            logger.warn('Failed to save namespace to file, but embeddings were stored successfully:', saveError.message);
+            // Don't fail the whole operation if file save fails
+          }
+
+          // Update results with stored count
+          results.forEach(result => {
+            result.storedCount = totalStored; // Total stored count
+            result.namespace = sharedNamespace;
+          });
+
+        } catch (storeError) {
+          logger.error('Error storing embeddings to Pinecone:', storeError);
+          errors.push({
+            error: 'Failed to store embeddings to Pinecone',
+            details: storeError.message,
             status: 'failed'
           });
         }
@@ -450,6 +502,7 @@ class RAGController {
   /**
    * Sync vector store - Check and sync files with Pinecone
    * POST /admin/chatbox-admin/rag/sync
+   * Note: With shared namespace, all files are considered indexed if the namespace exists
    */
   async syncVectorStore(req, res) {
     try {
@@ -476,37 +529,33 @@ class RAGController {
 
       logger.info(`Starting vector store sync with ${pdfFiles.length} PDF file(s)`);
 
-      // Get file names without extension (these are the namespaces)
-      const fileNamesWithoutExt = pdfFiles.map(file => path.basename(file, path.extname(file)));
+      // Get namespace from storage file, fallback to env
+      const sharedNamespace = await namespaceManager.getNamespaceWithFallback();
+      const namespaceExists = await ragServices.checkNamespaceExists(sharedNamespace);
       
-      // Check which files are indexed in Pinecone
-      const indexedNamespaces = await ragServices.getIndexedNamespaces(fileNamesWithoutExt);
-      
-      // Determine which files need to be indexed
-      const filesToIndex = pdfFiles.filter(file => {
-        const fileNameWithoutExt = path.basename(file, path.extname(file));
-        return !indexedNamespaces.includes(fileNameWithoutExt);
-      });
+      // With shared namespace, all files are either all indexed or all not indexed
+      const allIndexed = namespaceExists && pdfFiles.length > 0;
 
       const syncResults = {
         totalFiles: pdfFiles.length,
-        indexedFiles: indexedNamespaces.length,
-        filesToIndex: filesToIndex.length,
+        indexedFiles: allIndexed ? pdfFiles.length : 0,
+        filesToIndex: allIndexed ? 0 : pdfFiles.length,
+        namespace: sharedNamespace,
+        isIndexed: allIndexed,
         files: pdfFiles.map(filename => {
-          const fileNameWithoutExt = path.basename(filename, path.extname(filename));
           return {
             filename,
-            indexed: indexedNamespaces.includes(fileNameWithoutExt),
-            namespace: fileNameWithoutExt
+            indexed: allIndexed,
+            namespace: sharedNamespace
           };
         })
       };
 
-      logger.info(`Vector store sync completed: ${syncResults.indexedFiles} indexed, ${syncResults.filesToIndex} need indexing`);
+      logger.info(`Vector store sync completed: ${allIndexed ? 'All files indexed' : 'No files indexed'} in shared namespace "${sharedNamespace}"`);
 
-      const message = syncResults.filesToIndex > 0
-        ? `Sync completed: ${syncResults.indexedFiles} file(s) indexed, ${syncResults.filesToIndex} file(s) need indexing`
-        : `Sync completed: All ${syncResults.indexedFiles} file(s) are indexed`;
+      const message = allIndexed
+        ? `Sync completed: All ${pdfFiles.length} file(s) are indexed in shared namespace "${sharedNamespace}"`
+        : `Sync completed: ${pdfFiles.length} file(s) need indexing. Run /train to index all files.`;
 
       res.json(successResponse(message, syncResults));
 
@@ -542,30 +591,30 @@ class RAGController {
       // Get list of files and their indexed status
       const ragsDir = path.join(__dirname, '../uploads/rags');
       let files = [];
-      let indexedNamespaces = [];
+      // Get namespace from storage file, fallback to env
+      const sharedNamespace = await namespaceManager.getNamespaceWithFallback();
+      let namespaceExists = false;
 
       try {
         await fs.access(ragsDir);
         const fileList = await fs.readdir(ragsDir);
         const pdfFiles = fileList.filter(file => path.extname(file).toLowerCase() === '.pdf');
-        const fileNamesWithoutExt = pdfFiles.map(file => path.basename(file, path.extname(file)));
         
-        // Get indexed namespaces
-        indexedNamespaces = await ragServices.getIndexedNamespaces(fileNamesWithoutExt);
+        // Check if shared namespace exists
+        namespaceExists = await ragServices.checkNamespaceExists(sharedNamespace);
 
         // Get file details
         files = await Promise.all(
           pdfFiles.map(async (filename) => {
             const filePath = path.join(ragsDir, filename);
             const stats = await fs.stat(filePath);
-            const fileNameWithoutExt = path.basename(filename, path.extname(filename));
             
             return {
               filename,
               size: stats.size,
               uploadedAt: stats.birthtime.toISOString(),
-              indexed: indexedNamespaces.includes(fileNameWithoutExt),
-              namespace: fileNameWithoutExt
+              indexed: namespaceExists, // All files share the same indexed status
+              namespace: sharedNamespace
             };
           })
         );
@@ -575,8 +624,10 @@ class RAGController {
       }
 
       // Prepare response
+      const indexedCount = namespaceExists ? files.length : 0;
       const modelInfo = {
         indexName: PINECONE_INDEX,
+        sharedNamespace: sharedNamespace,
         indexStats: indexStats ? {
           totalVectors: indexStats.totalRecordCount || 0,
           dimension: indexStats.dimension || 3072,
@@ -585,15 +636,16 @@ class RAGController {
         } : null,
         files: {
           total: files.length,
-          indexed: indexedNamespaces.length,
-          notIndexed: files.length - indexedNamespaces.length,
+          indexed: indexedCount,
+          notIndexed: files.length - indexedCount,
           list: files
         },
         summary: {
           totalFiles: files.length,
-          indexedFiles: indexedNamespaces.length,
+          indexedFiles: indexedCount,
           totalVectors: indexStats?.totalRecordCount || 0,
-          totalNamespaces: indexStats?.namespaces ? Object.keys(indexStats.namespaces).length : indexedNamespaces.length
+          totalNamespaces: namespaceExists ? 1 : 0,
+          sharedNamespace: sharedNamespace
         }
       };
 

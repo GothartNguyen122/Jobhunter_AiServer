@@ -5,6 +5,7 @@ const OpenAI = require('openai');
 const config = require('../config');
 const { getIndex, isPineconeAvailable, initializeIndex, PINECONE_INDEX, PINECONE_DEFAULT_NAMESPACE } = require('../config/pinecone');
 const logger = require('../utils/logger');
+const namespaceManager = require('../utils/namespaceManager');
 
 // Initialize OpenAI client for embeddings
 const openai = new OpenAI({
@@ -145,12 +146,13 @@ async function processPDF(filePath, chunkSize , overlapSize ) {
 
 /**
  * Store embeddings in Pinecone Vector Database
- * @param {Array<Object>} embeddings - Array of objects with embedding and chunk: [{embedding: [vector], chunk: "text"}, ...]
+ * @param {Array<Object>} embeddings - Array of objects with embedding and chunk: [{embedding: [vector], chunk: "text", ...metadata}, ...]
  * @param {string} namespace - Namespace in Pinecone (default: from config)
  * @param {string} indexName - Index name (default: from config)
+ * @param {number} startIdIndex - Starting index for chunk IDs (default: 0)
  * @returns {Promise<Object>} Object with stored count and details
  */
-async function storeEmbeddings(embeddings, namespace = PINECONE_DEFAULT_NAMESPACE, indexName = PINECONE_INDEX) {
+async function storeEmbeddings(embeddings, namespace = PINECONE_DEFAULT_NAMESPACE, indexName = PINECONE_INDEX, startIdIndex ) {
   if (!isPineconeAvailable()) {
     throw new Error('Pinecone is not configured. Please set PINECONE_API_KEY in .env');
   }
@@ -172,14 +174,30 @@ async function storeEmbeddings(embeddings, namespace = PINECONE_DEFAULT_NAMESPAC
       
       try {
         // Prepare vectors for Pinecone
-        const vectors = batch.map((item, batchIndex) => ({
-          id: `chunk-${i + batchIndex}`,  // Unique ID: chunk-0, chunk-1, ...
-          values: item.embedding,          // Vector array (3072 dimensions)
-          metadata: { 
+        const vectors = batch.map((item, batchIndex) => {
+          const globalIndex = startIdIndex + i + batchIndex;
+          // Build metadata object - include chunk and any additional metadata from item
+          const metadata = { 
             chunk: item.chunk,             // Store original text in metadata
-            chunkIndex: i + batchIndex     // Store index for reference
-          }
-        }));
+            chunkIndex: globalIndex       // Store global index for reference
+          };
+          
+          // Add any additional metadata fields (e.g., filename, source, etc.)
+          if (item.filename) metadata.filename = item.filename;
+          if (item.source) metadata.source = item.source;
+          // Copy any other custom metadata fields
+          Object.keys(item).forEach(key => {
+            if (key !== 'embedding' && key !== 'chunk' && !metadata[key]) {
+              metadata[key] = item[key];
+            }
+          });
+
+          return {
+            id: `chunk-${globalIndex}`,  // Unique ID: chunk-0, chunk-1, ...
+            values: item.embedding,          // Vector array (3072 dimensions)
+            metadata
+          };
+        });
 
         // Upsert vectors to Pinecone namespace
         await index.namespace(namespace).upsert(vectors);
@@ -379,9 +397,25 @@ async function retrieveContextFromVector(queryText, options = {}) {
     maxTokens = 512
   } = options;
 
-  const namespace = (namespaceOption || PINECONE_DEFAULT_NAMESPACE || '').trim();
+  // Get namespace from option, storage file, or env (in that order)
+  let namespace = namespaceOption;
   if (!namespace) {
-    throw new Error('Namespace is required. Provide namespace in options or configure PINECONE_NAMESPACE.');
+    // Try to get from storage file
+    try {
+      namespace = await namespaceManager.getNamespace();
+    } catch (error) {
+      logger.debug('Could not get namespace from storage, using env fallback:', error.message);
+    }
+  }
+  
+  // Fallback to env if still not found
+  if (!namespace) {
+    namespace = PINECONE_DEFAULT_NAMESPACE || 'default';
+  }
+  
+  namespace = namespace.trim();
+  if (!namespace) {
+    throw new Error('Namespace is required. Provide namespace in options, storage file, or configure PINECONE_NAMESPACE.');
   }
 
   const indexName = (indexNameOption || PINECONE_INDEX || '').trim();

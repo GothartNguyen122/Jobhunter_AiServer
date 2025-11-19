@@ -19,6 +19,7 @@ require('dotenv').config({
 });
 
 const ragServices = require('./services/ragServices');
+const namespaceManager = require('./utils/namespaceManager');
 
 function createInterface() {
   return readline.createInterface({
@@ -31,22 +32,56 @@ function questionAsync(rl, prompt) {
   return new Promise(resolve => rl.question(prompt, resolve));
 }
 
+async function resolveNamespace(argNamespace) {
+  // 1. CLI argument
+  if (argNamespace && argNamespace.trim().length > 0) {
+    return argNamespace.trim();
+  }
+
+  // 2. Environment variables
+  const envNamespace = process.env.RAG_TEST_NAMESPACE || process.env.PINECONE_NAMESPACE;
+  if (envNamespace && envNamespace.trim().length > 0) {
+    return envNamespace.trim();
+  }
+
+  // 3. Stored namespace file
+  try {
+    const storedNamespace = await namespaceManager.getNamespace();
+    if (storedNamespace && storedNamespace.trim().length > 0) {
+      return storedNamespace.trim();
+    }
+  } catch (error) {
+    console.warn('⚠️  Could not read namespace from namespace.js:', error.message);
+  }
+
+  return null;
+}
+
 async function main() {
   const args = process.argv.slice(2);
-  // const namespaceFromArg = args.length > 0 ? args[0] : process.env.RAG_TEST_NAMESPACE || process.env.PINECONE_NAMESPACE;
-  const namespaceFromArg = "basic-concepts-gst-1763464138190-94810510"
-  
-  const namespace = namespaceFromArg?.trim();
+  const namespace = await resolveNamespace(args[0]);
 
   if (!namespace) {
-    console.error('❌ Namespace missing. Provide as CLI arg or set RAG_TEST_NAMESPACE/PINECONE_NAMESPACE.');
+    console.error('❌ Namespace missing. Provide CLI arg, set env RAG_TEST_NAMESPACE/PINECONE_NAMESPACE, or run training to save namespace.');
     process.exit(1);
   }
+
+  let storedIndexName = null;
+  try {
+    storedIndexName = await namespaceManager.getIndexName();
+  } catch (error) {
+    console.warn('⚠️  Could not read index name from namespace.js:', error.message);
+  }
+
+  const indexName = process.env.RAG_TEST_INDEX || storedIndexName || process.env.PINECONE_INDEX;
 
   const rl = createInterface();
   console.log('-----------------------------------------------------');
   console.log('Interactive RAG context tester');
   console.log(`Using namespace: ${namespace}`);
+  if (indexName) {
+    console.log(`Using index: ${indexName}`);
+  }
   console.log('Type "exit" or press Ctrl+C to stop.');
   console.log('-----------------------------------------------------');
 
@@ -68,7 +103,7 @@ async function main() {
       const answer = await ragServices.retrieveContextFromVector(userMessage, {
         namespace,
         topK: Number(process.env.RAG_TEST_TOPK) || 5,
-        indexName: process.env.RAG_TEST_INDEX || process.env.PINECONE_INDEX,
+        indexName,
         llmModel: process.env.RAG_TEST_LLM || 'gpt-4o-mini'
       });
 
