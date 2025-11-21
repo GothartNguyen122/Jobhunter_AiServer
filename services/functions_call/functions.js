@@ -71,7 +71,7 @@ const functions = [
     "type": "function",
     "function": {
       "name": "search_job",
-      "description": "Search and filter jobs by keyword, location, skills, salary range, and level with pagination",
+      "description": "Search and filter jobs by keyword, location, skills, salary range, level, company name, and categories with pagination",
       "parameters": {
         "type": "object",
         "properties": {
@@ -101,6 +101,14 @@ const functions = [
           "level": {
             "type": "string",
             "description": "Comma-separated list of levels (must match LevelEnum names)"
+          },
+          "companyName": {
+            "type": "string",
+            "description": "Company name to filter jobs"
+          },
+          "categories": {
+            "type": "string",
+            "description": "Comma-separated list of categories to filter jobs"
           },
           "page": {
             "type": "integer",

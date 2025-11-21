@@ -3,7 +3,7 @@ const mysqlConnection = require('../config/mysql');
 const { getCVScoreChat } = require('./functions_call/get_cv_score_chat');
 
 // Base URL for Jobhunter Backend API
-const BACKEND_BASE_URL = process.env.BACKEND_BASE_URL || 'http://localhost:8080/api/v1';
+const BACKEND_BASE_URL = process.env.BACKEND_BASE_URL;
 
 // JWT Token storage
 let authToken = null;
@@ -19,8 +19,8 @@ async function getAuthToken() {
   }
 
   // Try to get token from environment or use default credentials
-  const username = process.env.BACKEND_USERNAME || 'admin@gmail.com';
-  const password = process.env.BACKEND_PASSWORD || '123456';
+  const username = process.env.BACKEND_USERNAME;
+  const password = process.env.BACKEND_PASSWORD;
 
   try {
     const response = await axios.post(`${BACKEND_BASE_URL}/auth/login`, {
@@ -206,7 +206,9 @@ async function search_job(params = {}) {
     maxSalary = 100000000,
     location,
     skills,
-    level
+    level,
+    companyName,
+    categories
   } = params;
 
   // Hard limit size to 5 regardless of callergr input
@@ -221,7 +223,9 @@ async function search_job(params = {}) {
     maxSalary,
     ...(location ? { location } : {}),
     ...(skills ? { skills } : {}),
-    ...(level ? { level } : {})
+    ...(level ? { level } : {}),
+    ...(companyName ? { companyName } : {}),
+    ...(categories ? { categories } : {})
   };
 
   return await makeApiRequest('GET', '/jobs/user-search', null, queryParams, {}, true);
