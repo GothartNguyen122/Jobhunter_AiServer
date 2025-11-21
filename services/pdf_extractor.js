@@ -46,12 +46,36 @@ class PDFExtractor {
 
 
         // Spawn Ghostscript process
-
-        // Ensure PATH includes Homebrew binaries
-        process.env.PATH = process.env.PATH + ':/opt/homebrew/bin';
-
-        // Use correct Ghostscript command for macOS/Linux
-        const gsCommand = '/opt/homebrew/bin/gs';
+        // Find Ghostscript command - try common paths
+        let gsCommand = 'gs'; // Default: use PATH
+        
+        // Try to find Ghostscript in common locations
+        const possiblePaths = [
+          '/usr/bin/gs',           // Linux (Debian/Ubuntu)
+          '/opt/homebrew/bin/gs',  // macOS (Apple Silicon)
+          '/usr/local/bin/gs',     // macOS (Intel) / Linux (custom install)
+          'gs'                     // Fallback: use PATH
+        ];
+        
+        // Find first available Ghostscript
+        for (const gsPath of possiblePaths) {
+          try {
+            if (gsPath === 'gs') {
+              // For 'gs', just try to use it (will fail in spawn if not found)
+              gsCommand = 'gs';
+              break;
+            } else {
+              // Check if file exists
+              await fs.access(gsPath);
+              gsCommand = gsPath;
+              break;
+            }
+          } catch (err) {
+            // Continue to next path
+            continue;
+          }
+        }
+        
         const gsProcess = spawn(gsCommand, gsArgs, {
           stdio: ['pipe', 'pipe', 'pipe']
         });
