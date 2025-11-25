@@ -5,6 +5,14 @@ const { getCVScoreChat } = require('./functions_call/get_cv_score_chat');
 // Base URL for Jobhunter Backend API
 const BACKEND_BASE_URL = process.env.BACKEND_BASE_URL;
 
+const NO_AUTH_FUNCTIONS = new Set([
+  'login',
+  'register',
+  'test_auth',
+  'get_cv_score_chat',
+  'search_job',
+]);
+
 // JWT Token storage
 let authToken = null;
 let tokenExpiry = null;
@@ -150,6 +158,75 @@ async function makeApiRequest(method, endpoint, data = null, params = null, head
 }
 
 /**
+ * Helper utilities for pagination and filter serialization
+ */
+function toSafeInteger(value, fallback = 0) {
+  const parsed = typeof value === 'string' ? Number(value) : value;
+  if (Number.isFinite(parsed)) {
+    return Math.trunc(parsed);
+  }
+  return fallback;
+}
+
+function normalizePageValue(page, isZeroBased = false) {
+  const safePage = Math.max(0, toSafeInteger(page, 0));
+  return isZeroBased ? safePage : (safePage > 0 ? safePage - 1 : 0);
+}
+
+function normalizeSizeValue(size, fallback = 10, max = 50) {
+  const safeSize = Math.max(1, toSafeInteger(size, fallback));
+  return Math.min(safeSize, max);
+}
+
+function toCsvValue(value) {
+  if (Array.isArray(value)) {
+    const csv = value
+      .map(item => {
+        if (typeof item === 'string') {
+          return item.trim();
+        }
+        if (item && typeof item === 'object') {
+          if (typeof item.value === 'string') {
+            return item.value.trim();
+          }
+          if (typeof item.name === 'string') {
+            return item.name.trim();
+          }
+        }
+        return item !== undefined && item !== null ? String(item).trim() : '';
+      })
+      .filter(Boolean)
+      .join(',');
+    return csv || undefined;
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed.length ? trimmed : undefined;
+  }
+
+  if (value !== undefined && value !== null) {
+    const str = String(value).trim();
+    return str.length ? str : undefined;
+  }
+
+  return undefined;
+}
+
+function asNullableNumber(value) {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : undefined;
+  }
+
+  if (typeof value === 'string' && value.trim().length) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+
+  return undefined;
+}
+
+/**
  * Job Management Functions
  */
 async function get_jobs(params = {}) {
@@ -199,36 +276,63 @@ async function get_job_resumes(params) {
 async function search_job(params = {}) {
   const {
     page = 1,
-    size = 5,
+    size = 6,
     sort = 'updatedAt,desc',
     keyword = '',
-    minSalary = 0,
-    maxSalary = 100000000,
+    minSalary,
+    maxSalary,
     location,
     skills,
     level,
     companyName,
-    categories
+    categories,
+    pageIsZeroBased = false
   } = params;
 
-  // Hard limit size to 5 regardless of callergr input
-  const limitedSize = 5;
-
+  const normalizedKeyword = typeof keyword === 'string' ? keyword.trim() : '';
   const queryParams = {
-    page,
-    size: limitedSize,
+    page: normalizePageValue(page, pageIsZeroBased),
+    size: normalizeSizeValue(size),
     sort,
-    keyword,
-    minSalary,
-    maxSalary,
-    ...(location ? { location } : {}),
-    ...(skills ? { skills } : {}),
-    ...(level ? { level } : {}),
-    ...(companyName ? { companyName } : {}),
-    ...(categories ? { categories } : {})
+    keyword: normalizedKeyword
   };
 
-  return await makeApiRequest('GET', '/jobs/user-search', null, queryParams, {}, true);
+  const minSalaryValue = asNullableNumber(minSalary);
+  if (minSalaryValue !== undefined) {
+    queryParams.minSalary = minSalaryValue;
+  }
+
+  const maxSalaryValue = asNullableNumber(maxSalary);
+  if (maxSalaryValue !== undefined) {
+    queryParams.maxSalary = maxSalaryValue;
+  }
+
+  const locationCsv = toCsvValue(location);
+  if (locationCsv) {
+    queryParams.location = locationCsv;
+  }
+
+  const skillsCsv = toCsvValue(skills);
+  if (skillsCsv) {
+    queryParams.skills = skillsCsv;
+  }
+
+  const levelCsv = toCsvValue(level);
+  if (levelCsv) {
+    queryParams.level = levelCsv;
+  }
+
+  const normalizedCompany = typeof companyName === 'string' ? companyName.trim() : undefined;
+  if (normalizedCompany) {
+    queryParams.companyName = normalizedCompany;
+  }
+
+  const categoriesCsv = toCsvValue(categories);
+  if (categoriesCsv) {
+    queryParams.categories = categoriesCsv;
+  }
+
+  return await makeApiRequest('GET', '/jobs/user-search', null, queryParams, {}, false);
 }
 
 /**
@@ -549,8 +653,8 @@ async function call_function(functionName, arguments) {
   console.log(`🔧 Calling function: ${functionName} with args:`, arguments);
 
   try {
-    // Ensure JWT authentication for all backend API calls (except auth functions and CV score chat)
-    const requiresAuth = !['login', 'register', 'test_auth', 'get_cv_score_chat'].includes(functionName);
+    // Ensure JWT authentication for backend API calls that require it
+    const requiresAuth = !NO_AUTH_FUNCTIONS.has(functionName);
     
     if (requiresAuth) {
       console.log(`🔐 Ensuring JWT authentication for function: ${functionName}`);

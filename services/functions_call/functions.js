@@ -112,13 +112,18 @@ const functions = [
           },
           "page": {
             "type": "integer",
-            "description": "Page number for pagination (1-based or backend-specific)",
+            "description": "Page number for pagination (1-based by default)",
             "default": 1
           },
           "size": {
             "type": "integer",
             "description": "Number of items per page",
             "default": 10
+          },
+          "pageIsZeroBased": {
+            "type": "boolean",
+            "description": "Set true if the provided page number is already zero-based",
+            "default": false
           },
           "sort": {
             "type": "string",
