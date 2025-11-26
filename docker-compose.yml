@@ -1,0 +1,80 @@
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: jobhunter-database-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_DATABASE: jobhunter_v2
+      # Nếu muốn user riêng:
+      # MYSQL_USER: jobhunter
+      # MYSQL_PASSWORD: 123456
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    command: >
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+    networks:
+      - jobhunter-net
+
+  backend:
+    build:
+      context: /Users/gothartnguyen/Documents/Gothart/DAI_HOC_2021_2026/TOT_NGHIEP/Jobhunter_BackEnd
+      dockerfile: Dockerfile
+    container_name: jobhunter-backend
+    env_file:
+      - /Users/gothartnguyen/Documents/Gothart/DAI_HOC_2021_2026/TOT_NGHIEP/Jobhunter_BackEnd/env.docker
+    environment:
+      # Ghi đè DB_URL trong env.docker để dùng container mysql
+      DB_URL: jdbc:mysql://mysql:3306/jobhunter_v2
+      DB_USERNAME: root
+      DB_PASSWORD: 123456
+      # Đường dẫn upload trong container (map ra volume bên dưới)
+      UPLOAD_BASE_URI: file:///uploads/
+    volumes:
+      # Thay đường dẫn bên trái bằng thư mục upload hiện tại của bạn trên máy host nếu khác
+      - /Users/gothartnguyen/Documents/Gothart/DAI_HOC_2021_2026/TOT_NGHIEP/upload:/uploads
+    depends_on:
+      - mysql
+    ports:
+      - "8080:8080"
+    networks:
+      - jobhunter-net
+
+  ai_server:
+    build:
+      context: /Users/gothartnguyen/Documents/Gothart/DAI_HOC_2021_2026/TOT_NGHIEP/Jobhunter_AiServer/Jobhunter_AiServer
+      dockerfile: Dockerfile
+    container_name: jobhunter-ai-server
+    env_file:
+      - /Users/gothartnguyen/Documents/Gothart/DAI_HOC_2021_2026/TOT_NGHIEP/Jobhunter_AiServer/Jobhunter_AiServer/.env
+    environment:
+      PORT: 3005
+      NODE_ENV: development
+      # Kết nối MySQL trong network docker
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_USERNAME: root
+      MYSQL_PASSWORD: 123456
+      MYSQL_DATABASE: jobhunter_v2
+      # Gọi backend qua service name "backend"
+      BACKEND_BASE_URL: http://backend:8080/api/v1
+      # CORS cho frontend nếu cần (ví dụ Vite ở 5173)
+      CORS_ORIGIN: http://localhost:3000,http://localhost:5173,http://localhost:8080,https://jobhunter-front-end-j5t3.vercel.app
+    depends_on:
+      - backend
+      - mysql
+    ports:
+      - "3005:3005"
+    networks:
+      - jobhunter-net
+
+volumes:
+  mysql_data:
+
+networks:
+  jobhunter-net:
+    driver: bridge
