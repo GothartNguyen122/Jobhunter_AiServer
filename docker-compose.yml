@@ -21,6 +21,7 @@ services:
       - jobhunter-net
 
   backend:
+    image: jobhunter_backend
     build:
       context: /Users/gothartnguyen/Documents/Gothart/DAI_HOC_2021_2026/TOT_NGHIEP/Jobhunter_BackEnd
       dockerfile: Dockerfile
@@ -45,6 +46,7 @@ services:
       - jobhunter-net
 
   ai_server:
+    image: jobhunter_ai_server
     build:
       context: /Users/gothartnguyen/Documents/Gothart/DAI_HOC_2021_2026/TOT_NGHIEP/Jobhunter_AiServer/Jobhunter_AiServer
       dockerfile: Dockerfile
