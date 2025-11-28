@@ -2,7 +2,6 @@
 services:
   mysql:
     image: mysql:8.0
-    platform: linux/amd64
     container_name: jobhunter-database-mysql
     environment:
       MYSQL_ROOT_PASSWORD: 123456
@@ -11,9 +10,9 @@ services:
       # MYSQL_USER: jobhunter
       # MYSQL_PASSWORD: 123456
     ports:
-      - "3307:3306"
+      - "3308:3308"
     volumes:
-      - mysql_data:/var/lib/mysql
+      - mysql_data2:/var/lib/mysql
     command: >
       --default-authentication-plugin=mysql_native_password
       --character-set-server=utf8mb4
@@ -22,14 +21,10 @@ services:
       - jobhunter-net
 
   backend:
-    image: jobhunter_backend
-    platform: linux/amd64
-    build:
-      context: /Users/gothartnguyen/Documents/Gothart/DAI_HOC_2021_2026/TOT_NGHIEP/Jobhunter_BackEnd
-      dockerfile: Dockerfile
+    image: duybao122/jobhunter_backend:latest
     container_name: jobhunter-backend
     env_file:
-      - /Users/gothartnguyen/Documents/Gothart/DAI_HOC_2021_2026/TOT_NGHIEP/Jobhunter_BackEnd/env.docker
+      - /home/vmadmin/longbao/.env.template
     environment:
       # Ghi đè DB_URL trong env.docker để dùng container mysql
       DB_URL: jdbc:mysql://mysql:3306/jobhunter_v2
@@ -39,7 +34,7 @@ services:
       UPLOAD_BASE_URI: file:///uploads/
     volumes:
       # Thay đường dẫn bên trái bằng thư mục upload hiện tại của bạn trên máy host nếu khác
-      - /Users/gothartnguyen/Documents/Gothart/DAI_HOC_2021_2026/TOT_NGHIEP/upload:/uploads
+      - /home/vmadmin/longbao/upload:/uploads
     depends_on:
       - mysql
     ports:
@@ -48,20 +43,16 @@ services:
       - jobhunter-net
 
   ai_server:
-    image: jobhunter_ai_server
-    platform: linux/amd64
-    build:
-      context: /Users/gothartnguyen/Documents/Gothart/DAI_HOC_2021_2026/TOT_NGHIEP/Jobhunter_AiServer/Jobhunter_AiServer
-      dockerfile: Dockerfile
+    image: duybao122/jobhunter_ai_server:latest
     container_name: jobhunter-ai-server
     env_file:
-      - /Users/gothartnguyen/Documents/Gothart/DAI_HOC_2021_2026/TOT_NGHIEP/Jobhunter_AiServer/Jobhunter_AiServer/.env
+      - /home/vmadmin/longbao/.env.template
     environment:
       PORT: 3005
       NODE_ENV: development
       # Kết nối MySQL trong network docker
       MYSQL_HOST: mysql
-      MYSQL_PORT: 3306
+      MYSQL_PORT: 3308
       MYSQL_USERNAME: root
       MYSQL_PASSWORD: 123456
       MYSQL_DATABASE: jobhunter_v2

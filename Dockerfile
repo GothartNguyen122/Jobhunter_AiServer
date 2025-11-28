@@ -1,4 +1,4 @@
-FROM node:20-bullseye AS base
+FROM --platform=linux/amd64 node:20-bullseye AS base
 WORKDIR /app
 ENV NODE_ENV=production
 
