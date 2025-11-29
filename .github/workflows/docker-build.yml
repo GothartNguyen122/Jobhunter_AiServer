@@ -14,7 +14,7 @@ on:
 
 env:
   REGISTRY_GHCR: ghcr.io
-  IMAGE_NAME_GHCR: ghcr.io/${{ github.repository_owner }}/jobhunter-ai-server
+  IMAGE_NAME_GHCR: jobhunter-ai-server
 
 jobs:
   build-and-push:

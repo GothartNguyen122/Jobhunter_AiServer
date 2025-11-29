@@ -11,9 +11,9 @@ services:
       # MYSQL_USER: jobhunter
       # MYSQL_PASSWORD: 123456
     ports:
-      - "3307:3306"
+      - "3308:3308"
     volumes:
-      - mysql_data:/var/lib/mysql
+      - mysql_data2:/var/lib/mysql
     command: >
       --default-authentication-plugin=mysql_native_password
       --character-set-server=utf8mb4
@@ -22,24 +22,21 @@ services:
       - jobhunter-net
 
   backend:
-    image: jobhunter_backend
+    image: jobhunter_backend:latest
     platform: linux/amd64
-    build:
-      context: /Users/gothartnguyen/Documents/Gothart/DAI_HOC_2021_2026/TOT_NGHIEP/Jobhunter_BackEnd
-      dockerfile: Dockerfile
     container_name: jobhunter-backend
     env_file:
-      - /Users/gothartnguyen/Documents/Gothart/DAI_HOC_2021_2026/TOT_NGHIEP/Jobhunter_BackEnd/env.docker
+      - /home/vmadmin/longbao/.env.template
     environment:
       # Ghi đè DB_URL trong env.docker để dùng container mysql
-      DB_URL: jdbc:mysql://mysql:3306/jobhunter_v2
+      DB_URL: jdbc:mysql://mysql:3308/jobhunter_v2
       DB_USERNAME: root
       DB_PASSWORD: 123456
       # Đường dẫn upload trong container (map ra volume bên dưới)
-      UPLOAD_BASE_URI: file:///uploads/
+      UPLOAD_BASE_URI: /file:///uploads/
     volumes:
       # Thay đường dẫn bên trái bằng thư mục upload hiện tại của bạn trên máy host nếu khác
-      - /Users/gothartnguyen/Documents/Gothart/DAI_HOC_2021_2026/TOT_NGHIEP/upload:/uploads
+      - /home/vmadmin/longbao/upload:/uploads
     depends_on:
       - mysql
     ports:
@@ -48,14 +45,11 @@ services:
       - jobhunter-net
 
   ai_server:
-    image: jobhunter_ai_server
+    image: ghcr.io/gothartnguyen122/jobhunter-ai-server:latest
     platform: linux/amd64
-    build:
-      context: /Users/gothartnguyen/Documents/Gothart/DAI_HOC_2021_2026/TOT_NGHIEP/Jobhunter_AiServer/Jobhunter_AiServer
-      dockerfile: Dockerfile
     container_name: jobhunter-ai-server
     env_file:
-      - /Users/gothartnguyen/Documents/Gothart/DAI_HOC_2021_2026/TOT_NGHIEP/Jobhunter_AiServer/Jobhunter_AiServer/.env
+      - /home/vmadmin/longbao/.env.template
     environment:
       PORT: 3005
       NODE_ENV: development
