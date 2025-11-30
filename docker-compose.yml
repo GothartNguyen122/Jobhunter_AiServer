@@ -11,24 +11,31 @@ services:
       # MYSQL_USER: jobhunter
       # MYSQL_PASSWORD: 123456
     ports:
-      - "3308:3308"
+      - "3308:3308"  # Host port 3308 map tới container port 3308
     volumes:
       - mysql_data2:/var/lib/mysql
     command: >
       --default-authentication-plugin=mysql_native_password
       --character-set-server=utf8mb4
       --collation-server=utf8mb4_unicode_ci
+      --port=3308
     networks:
       - jobhunter-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-P", "3308", "-u", "root", "-p123456"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   backend:
-    image: jobhunter_backend:latest
+    image: ghcr.io/gothartnguyen122/jobhunter-backend:latest
     platform: linux/amd64
     container_name: jobhunter-backend
     env_file:
       - /home/vmadmin/longbao/.env.template
     environment:
       # Ghi đè DB_URL trong env.docker để dùng container mysql
+      # Trong Docker network, kết nối tới port 3308
       DB_URL: jdbc:mysql://mysql:3308/jobhunter_v2
       DB_USERNAME: root
       DB_PASSWORD: 123456
@@ -55,7 +62,7 @@ services:
       NODE_ENV: development
       # Kết nối MySQL trong network docker
       MYSQL_HOST: mysql
-      MYSQL_PORT: 3306
+      MYSQL_PORT: 3308
       MYSQL_USERNAME: root
       MYSQL_PASSWORD: 123456
       MYSQL_DATABASE: jobhunter_v2
@@ -72,7 +79,7 @@ services:
       - jobhunter-net
 
 volumes:
-  mysql_data:
+  mysql_data2:
 
 networks:
   jobhunter-net:
