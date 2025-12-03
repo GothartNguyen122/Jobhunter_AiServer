@@ -69,7 +69,7 @@ services:
       # Gọi backend qua service name "backend"
       BACKEND_BASE_URL: http://backend:8080/api/v1
       # CORS cho frontend nếu cần (ví dụ Vite ở 5173)
-      CORS_ORIGIN: http://localhost:3000,http://localhost:5173,http://localhost:8080,https://jobhunter-front-end-j5t3.vercel.app
+      CORS_ORIGIN: http://localhost:3000,http://localhost:5173,http://localhost:8080,https://jobhunter-front-end-j5t3.vercel.app,https://www.jobs-network.website,https://jobs-network.website
     depends_on:
       - backend
       - mysql
