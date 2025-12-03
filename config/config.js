@@ -57,7 +57,9 @@ const config = {
       'http://127.0.0.1:3000',
       'http://127.0.0.1:5173',
       'http://127.0.0.1:8080',
-      'https://jobhunter-front-end-j5t3.vercel.app'
+      'https://jobhunter-front-end-j5t3.vercel.app',
+      'https://www.jobs-network.website',
+      'https://jobs-network.website'
     ],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
