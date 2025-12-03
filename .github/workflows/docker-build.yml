@@ -27,8 +27,8 @@ on:
 
 env:
   REGISTRY_GHCR: ghcr.io
-  # GHCR image name MUST be lowercase → dùng toLower(github.repository_owner)
-  IMAGE_NAME_GHCR: ghcr.io/${{ toLower(github.repository_owner) }}/jobhunter-ai-server
+  # GHCR image name MUST be lowercase → hardcode owner ở dạng lowercase
+  IMAGE_NAME_GHCR: ghcr.io/gothartnguyen122/jobhunter-ai-server
 
 jobs:
   build-and-push:
