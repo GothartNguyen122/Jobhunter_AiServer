@@ -2,9 +2,59 @@ const express = require('express');
 const router = express.Router();
 const { controller: pdfController, upload } = require('../controllers/pdfController');
 
-// Test endpoint
-router.get('/test', (req, res) => {
-  res.json({ success: true, message: 'PDF routes working' });
+/**
+ * @swagger
+ * tags:
+ *   - name: PDF
+ *     description: PDF extraction and processing endpoints
+ */
+
+/**
+ * @swagger
+ * /api/v1/pdf/extract:
+ *   post:
+ *     summary: Extract content from PDF
+ *     description: Extract structured data from PDF file (CV/Resume) using AI
+ *     tags: [PDF]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - file
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *                 description: PDF file to extract
+ *               pageNumber:
+ *                 type: integer
+ *                 default: 0
+ *                 description: Page number to extract (0-indexed)
+ *     responses:
+ *       200:
+ *         description: PDF content extracted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     extractedData:
+ *                       type: object
+ *                     fileInfo:
+ *                       type: object
+ */
+router.post('/extract', upload, (req, res) => {
+  pdfController.extractFromPdf.call(pdfController, req, res);
 });
 
 // Test extract endpoint without upload
@@ -128,10 +178,45 @@ router.post('/extract', upload, (req, res) => {
   pdfController.extractFromPdf.call(pdfController, req, res);
 });
 
-// Extract content from PDF (multiple pages)
+/**
+ * @swagger
+ * /api/v1/pdf/extract-multiple:
+ *   post:
+ *     summary: Extract content from multiple PDF pages
+ *     description: Extract content from multiple pages of a PDF file
+ *     tags: [PDF]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - file
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *               maxPages:
+ *                 type: integer
+ *                 default: 3
+ *     responses:
+ *       200:
+ *         description: PDF content extracted successfully
+ */
 router.post('/extract-multiple', upload, pdfController.extractMultiplePages);
 
-// Get PDF extractor configuration
+/**
+ * @swagger
+ * /api/v1/pdf/config:
+ *   get:
+ *     summary: Get PDF extractor configuration
+ *     description: Get configuration for PDF extractor
+ *     tags: [PDF]
+ *     responses:
+ *       200:
+ *         description: Configuration retrieved successfully
+ */
 router.get('/config', pdfController.getConfig);
 
 module.exports = router;

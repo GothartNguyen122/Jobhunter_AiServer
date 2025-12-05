@@ -10,6 +10,8 @@ const compareJobCVRoutes = require('./compareJobCVRoutes');
 const ragRoutes = require('./ragRoutes');
 const recommendationRoutes = require('./recommendationRoutes');
 const analysisDataRoutes = require('./analysisDataRoutes');
+const hrResumeRoutes = require('./hr/resumeRoutes');
+const hrJobRoutes = require('./hr/jobRoutes');
 
 // API version prefix
 const API_VERSION = '/api/v1';
@@ -22,6 +24,8 @@ router.use(`${API_VERSION}/health`, healthRoutes);
 router.use(`${API_VERSION}/cv_compatible`, compareJobCVRoutes);
 router.use(`${API_VERSION}/recommendations`, recommendationRoutes);
 router.use(`${API_VERSION}/analysis_datas`, analysisDataRoutes);
+router.use(`${API_VERSION}/resumes`, hrResumeRoutes);
+router.use(`${API_VERSION}/jobs`, hrJobRoutes);
 
 // RAG routes for frontend admin panel
 router.use('/admin/chatbox-admin/rag', ragRoutes);
@@ -30,7 +34,32 @@ router.use('/admin/chatbox-admin/rag', ragRoutes);
 router.use('/api/v1/AiServer', chatRoutes);
 router.use('/health', healthRoutes);
 
-// Root endpoint
+/**
+ * @swagger
+ * /:
+ *   get:
+ *     summary: API information
+ *     description: Get API information and available endpoints
+ *     tags: [General]
+ *     responses:
+ *       200:
+ *         description: API information retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 version:
+ *                   type: string
+ *                 timestamp:
+ *                   type: string
+ *                 endpoints:
+ *                   type: object
+ */
 router.get('/', (req, res) => {
   res.json({
     success: true,
@@ -45,7 +74,9 @@ router.get('/', (req, res) => {
       cv_compatible: `${API_VERSION}/cv_compatible`,
       recommendations: `${API_VERSION}/recommendations`,
       analysis_datas: `${API_VERSION}/analysis_datas`,
-      rag: '/admin/chatbox-admin/rag'
+      resumes: `${API_VERSION}/resumes`,
+      rag: '/admin/chatbox-admin/rag',
+      swagger: '/api-docs'
     }
   });
 });

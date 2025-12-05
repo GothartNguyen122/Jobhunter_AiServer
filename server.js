@@ -11,12 +11,16 @@ const app = appInstance.getApp();
 // Start server
 const server = app.listen(config.port, async () => {
   logger.success(`🤖 Jobhunter AI Server is running on port ${config.port}`);
+  logger.info(`📚 Swagger UI Documentation:`);
+  logger.info(`   GET  http://localhost:${config.port}/api-docs - Swagger UI`);
+  logger.info(`   GET  http://localhost:${config.port}/api-docs.json - Swagger JSON`);
   logger.info(`📡 API endpoints:`);
   logger.info(`   GET  / - API information`);
   logger.info(`   GET  /api/v1/health - Health check`);
   logger.info(`   GET  /api/v1/chatboxes - Manage chatboxes`);
   logger.info(`   POST /api/v1/chat/:chatboxId/message - Send message`);
   logger.info(`   POST /api/v1/pdf/extract - Extract PDF content`);
+  logger.info(`   GET  /api/v1/resumes/by-job/:jobId - Get resumes by job with AI analysis`);
   logger.info(`   Supabase conversation management:`);
   logger.info(`   GET  /api/v1/chat/conversations - Get all conversations`);
   logger.info(`   GET  /api/v1/chat/conversations/:id - Get conversation by ID`);

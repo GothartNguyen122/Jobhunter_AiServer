@@ -9,6 +9,7 @@ const fs = require('fs').promises;
 const config = require('./config');
 const logger = require('./utils/logger');
 const { errorResponse } = require('./utils/response');
+const { swaggerUi, swaggerSpec } = require('./config/swagger');
 
 // Import routes
 const routes = require('./routes');
@@ -66,6 +67,18 @@ class App {
   }
 
   setupRoutes() {
+    // Swagger UI setup
+    this.app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+      customCss: '.swagger-ui .topbar { display: none }',
+      customSiteTitle: 'Jobhunter AI Server API Documentation'
+    }));
+
+    // Swagger JSON endpoint
+    this.app.get('/api-docs.json', (req, res) => {
+      res.setHeader('Content-Type', 'application/json');
+      res.send(swaggerSpec);
+    });
+
     // Mount API routes
     this.app.use('/', routes);
 
