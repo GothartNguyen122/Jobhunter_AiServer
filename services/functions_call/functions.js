@@ -1,6 +1,9 @@
 /**
  * OpenAI Function Definitions for Jobhunter Backend APIs
  * These functions define the structure for calling Jobhunter Backend APIs
+ * 
+ * NOTE: These functions are for CANDIDATE/CLIENT use only.
+ * HR functions are in ./hr/hrFunctions.js and should NOT be merged here.
  */
 
 const functions = [

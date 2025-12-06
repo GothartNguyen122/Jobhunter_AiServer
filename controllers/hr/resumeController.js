@@ -3,8 +3,12 @@ const { successResponse, errorResponse, validationErrorResponse } = require('../
 const logger = require('../../utils/logger');
 const resumeService = require('../../services/hr/resumeService');
 
-// Base URL for Jobhunter Backend API
+// Base URL for Jobhunter Backend API - chỉ dùng biến môi trường
 const BACKEND_BASE_URL = process.env.BACKEND_BASE_URL;
+
+if (!BACKEND_BASE_URL) {
+  logger.error('BACKEND_BASE_URL environment variable is not set!');
+}
 
 class ResumeController {
 
@@ -14,6 +18,11 @@ class ResumeController {
    */
   async getResumesByJob(req, res) {
     try {
+      if (!BACKEND_BASE_URL) {
+        logger.error('BACKEND_BASE_URL is not configured');
+        return res.status(500).json(errorResponse('Backend API URL is not configured. Please set BACKEND_BASE_URL in .env file', 500));
+      }
+      
       const { jobId } = req.params;
       const { page = 1, size = 10, sort = 'createdAt' } = req.query;
 

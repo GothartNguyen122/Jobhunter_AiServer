@@ -10,8 +10,10 @@ const compareJobCVRoutes = require('./compareJobCVRoutes');
 const ragRoutes = require('./ragRoutes');
 const recommendationRoutes = require('./recommendationRoutes');
 const analysisDataRoutes = require('./analysisDataRoutes');
+const resumeInfoRoutes = require('./resumeInfoRoutes');
 const hrResumeRoutes = require('./hr/resumeRoutes');
 const hrJobRoutes = require('./hr/jobRoutes');
+const hrChatRoutes = require('./hr/hrChatRoutes');
 
 // API version prefix
 const API_VERSION = '/api/v1';
@@ -24,8 +26,12 @@ router.use(`${API_VERSION}/health`, healthRoutes);
 router.use(`${API_VERSION}/cv_compatible`, compareJobCVRoutes);
 router.use(`${API_VERSION}/recommendations`, recommendationRoutes);
 router.use(`${API_VERSION}/analysis_datas`, analysisDataRoutes);
+router.use(`${API_VERSION}/resume-infos`, resumeInfoRoutes);
 router.use(`${API_VERSION}/resumes`, hrResumeRoutes);
 router.use(`${API_VERSION}/jobs`, hrJobRoutes);
+// HR Chat routes - /api/v1/AiServer/hr/chat
+// Route này sẽ nhận request từ /api/v1/AiServer/hr/chat và dẫn đến routes/hr/hrChatRoutes.js
+router.use(`${API_VERSION}/AiServer/hr/chat`, hrChatRoutes);
 
 // RAG routes for frontend admin panel
 router.use('/admin/chatbox-admin/rag', ragRoutes);
@@ -74,6 +80,7 @@ router.get('/', (req, res) => {
       cv_compatible: `${API_VERSION}/cv_compatible`,
       recommendations: `${API_VERSION}/recommendations`,
       analysis_datas: `${API_VERSION}/analysis_datas`,
+      resume_infos: `${API_VERSION}/resume-infos`,
       resumes: `${API_VERSION}/resumes`,
       rag: '/admin/chatbox-admin/rag',
       swagger: '/api-docs'

@@ -2,8 +2,12 @@ const axios = require('axios');
 const { successResponse, errorResponse, validationErrorResponse } = require('../../utils/response');
 const logger = require('../../utils/logger');
 
-// Base URL for Jobhunter Backend API
+// Base URL for Jobhunter Backend API - chỉ dùng biến môi trường
 const BACKEND_BASE_URL = process.env.BACKEND_BASE_URL;
+
+if (!BACKEND_BASE_URL) {
+  logger.error('BACKEND_BASE_URL environment variable is not set!');
+}
 
 class JobController {
 
@@ -13,6 +17,11 @@ class JobController {
    */
   async getJobById(req, res) {
     try {
+      if (!BACKEND_BASE_URL) {
+        logger.error('BACKEND_BASE_URL is not configured');
+        return res.status(500).json(errorResponse('Backend API URL is not configured. Please set BACKEND_BASE_URL in .env file', 500));
+      }
+      
       const { id } = req.params;
 
       // Validate jobId

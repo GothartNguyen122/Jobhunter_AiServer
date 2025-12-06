@@ -65,8 +65,15 @@ const validateMessageData = (data) => {
     errors.push('User name must be a string');
   }
 
-  if (data.user && data.user.role && typeof data.user.role !== 'string') {
-    errors.push('User role must be a string');
+  // Support both string and object format for role
+  if (data.user && data.user.role) {
+    if (typeof data.user.role !== 'string' && typeof data.user.role !== 'object') {
+      errors.push('User role must be a string or object');
+    }
+    // If role is object, check if it has name property
+    if (typeof data.user.role === 'object' && data.user.role.name && typeof data.user.role.name !== 'string') {
+      errors.push('User role.name must be a string');
+    }
   }
 
   return {

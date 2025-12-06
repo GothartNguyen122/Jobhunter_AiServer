@@ -1,9 +1,15 @@
 const axios = require('axios');
 const mysqlConnection = require('../config/mysql');
 const { getCVScoreChat } = require('./functions_call/get_cv_score_chat');
+const hrHandlers = require('./functions_call/hr/hrHandlers');
 
-// Base URL for Jobhunter Backend API
+// Base URL for Jobhunter Backend API - chỉ dùng biến môi trường
 const BACKEND_BASE_URL = process.env.BACKEND_BASE_URL;
+const logger = require('../utils/logger');
+
+if (!BACKEND_BASE_URL) {
+  logger.error('BACKEND_BASE_URL environment variable is not set!');
+}
 
 const NO_AUTH_FUNCTIONS = new Set([
   'login',
@@ -11,6 +17,7 @@ const NO_AUTH_FUNCTIONS = new Set([
   'test_auth',
   'get_cv_score_chat',
   'search_job',
+  'get_resume_info_supabase', // Supabase query không cần auth
 ]);
 
 // JWT Token storage
@@ -21,6 +28,12 @@ let tokenExpiry = null;
  * Get or refresh JWT token
  */
 async function getAuthToken() {
+  // Validate BACKEND_BASE_URL is set
+  if (!BACKEND_BASE_URL) {
+    logger.error('BACKEND_BASE_URL is not configured in environment variables');
+    return null;
+  }
+  
   // Check if token is still valid
   if (authToken && tokenExpiry && Date.now() < tokenExpiry) {
     return authToken;
@@ -65,6 +78,16 @@ async function getAuthToken() {
  */
 async function makeApiRequest(method, endpoint, data = null, params = null, headers = {}, requireAuth = true) {
   try {
+    // Validate BACKEND_BASE_URL is set
+    if (!BACKEND_BASE_URL) {
+      logger.error('BACKEND_BASE_URL is not configured in environment variables');
+      return {
+        success: false,
+        error: 'Backend API URL is not configured. Please set BACKEND_BASE_URL in .env file',
+        status: 500
+      };
+    }
+    
     // Get auth token if required
     let authHeaders = {};
     if (requireAuth) {
@@ -617,6 +640,7 @@ async function get_resumes_score_against_jobs(params) {
   }
 }
 
+
 /**
  * Test JWT authentication
  */
@@ -747,6 +771,12 @@ async function call_function(functionName, arguments) {
       // Test functions
       case 'test_auth':
         return await test_auth();
+
+      // HR Resume Analysis functions
+      case 'get_resume_info_supabase':
+        return await hrHandlers.get_resume_info_supabase(arguments);
+      case 'get_user_job_pairs':
+        return await hrHandlers.get_user_job_pairs(arguments);
 
       default:
         return {
