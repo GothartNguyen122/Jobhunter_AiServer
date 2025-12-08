@@ -24,8 +24,22 @@ class App {
   }
 
   setupMiddleware() {
-    // Security middleware
-    this.app.use(helmet());
+    // CORS configuration - MUST be before helmet
+    // CORS middleware automatically handles OPTIONS preflight requests
+    this.app.use(cors({
+      origin: config.cors.origin,
+      credentials: config.cors.credentials,
+      methods: config.cors.methods,
+      allowedHeaders: config.cors.allowedHeaders,
+      exposedHeaders: ['Content-Length', 'X-Foo', 'X-Bar'],
+      maxAge: 86400 // 24 hours
+    }));
+
+    // Security middleware - configured to work with CORS
+    this.app.use(helmet({
+      crossOriginResourcePolicy: { policy: "cross-origin" },
+      crossOriginEmbedderPolicy: false
+    }));
 
     // Rate limiting
     const limiter = rateLimit({
@@ -38,12 +52,6 @@ class App {
       }
     });
     this.app.use('/api/', limiter);
-
-    // CORS configuration
-    this.app.use(cors({
-      origin: config.cors.origin,
-      credentials: config.cors.credentials
-    }));
 
     // Body parsing middleware
     this.app.use(express.json({ limit: '10mb' }));

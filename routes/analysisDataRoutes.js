@@ -95,5 +95,18 @@ router.get('/users', analysisDataController.getAnalysisDataByJobUniqueUsers);
  */
 router.get('/health', analysisDataController.healthCheck);
 
+/**
+ * @swagger
+ * /api/v1/analysis_datas/stats:
+ *   get:
+ *     summary: Get AI statistics
+ *     description: Get statistics about AI analysis (total CVs analyzed, matching score distribution)
+ *     tags: [Analysis Data]
+ *     responses:
+ *       200:
+ *         description: AI statistics retrieved successfully
+ */
+router.get('/stats', analysisDataController.getAIStatistics);
+
 module.exports = router;
 

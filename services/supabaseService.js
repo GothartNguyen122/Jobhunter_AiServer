@@ -173,35 +173,78 @@ class SupabaseService {
         matching_score
       } = payload;
 
+      // Validate required fields
+      if (!user_id) {
+        throw new Error('user_id is required');
+      }
+      if (!job_id) {
+        throw new Error('job_id is required');
+      }
+
+      // Normalize matching_score: handle null, undefined, string with %, or number
+      let normalizedMatchingScore = null;
+      if (matching_score !== null && matching_score !== undefined) {
+        // Convert to string first to handle all cases
+        let scoreStr = String(matching_score);
+        
+        // Remove % and trim
+        scoreStr = scoreStr.replace('%', '').trim();
+        
+        // Try to parse as number
+        const num = Number(scoreStr);
+        if (!isNaN(num) && isFinite(num)) {
+          // Ensure it's within valid range (0-100)
+          normalizedMatchingScore = Math.max(0, Math.min(100, Math.round(num)));
+        } else {
+          // If can't parse, set to null
+          normalizedMatchingScore = null;
+        }
+      }
+
+      // Prepare record - ensure all fields are properly formatted
       const record = {
-        user_id,
-        job_id,
-        job_name,
-        extracted_data:extractedData,
-        final_result,
-        analysis_result,
-        matching_score :Number((matching_score || '').replace('%', '')),
+        user_id: Number(user_id),
+        job_id: Number(job_id),
+        job_name: job_name || null,
+        extracted_data: extractedData || null,
+        final_result: final_result || null,
+        analysis_result: analysis_result || null,
+        matching_score: normalizedMatchingScore,
       };
 
       if (id) {
-        record.id = id;
+        record.id = Number(id);
       }
 
+      // Try upsert first (update if exists, insert if not) to avoid duplicate key errors
       const { data, error } = await supabase
         .from('analysics_datas')
-        .insert(record)
+        .upsert(record, {
+          onConflict: 'user_id,job_id',
+          ignoreDuplicates: false
+        })
         .select()
         .single();
 
       if (error) {
-        logger.error('Error saving analysis data to Supabase:', error);
-        throw error;
+        // If upsert fails, try insert (in case there's no unique constraint)
+        const { data: insertData, error: insertError } = await supabase
+          .from('analysics_datas')
+          .insert(record)
+          .select()
+          .single();
+
+        if (insertError) {
+          logger.error('Error saving analysis data to Supabase:', insertError.message);
+          throw insertError;
+        }
+
+        return insertData;
       }
 
-      logger.info(`Analysis data saved to Supabase for job: ${job_id}`);
       return data;
     } catch (error) {
-      logger.error('Error in saveAnalysisData:', error);
+      logger.error('Error in saveAnalysisData:', error.message);
       throw error;
     }
   }
@@ -389,6 +432,60 @@ class SupabaseService {
       return data || [];
     } catch (error) {
       logger.error('Error in getResumeInfosByJob:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get AI statistics: total CVs analyzed and matching score distribution
+   * @returns {Object} { totalAnalyzed, scoreDistribution: { excellent, good, average, low } }
+   */
+  async getAIStatistics() {
+    try {
+      // Get all analysis data with matching scores
+      const { data, error } = await supabase
+        .from('analysics_datas')
+        .select('matching_score, created_at')
+        .not('matching_score', 'is', null);
+
+      if (error) {
+        logger.error('Error getting AI statistics from Supabase:', error);
+        throw error;
+      }
+
+      const totalAnalyzed = data?.length || 0;
+      
+      // Phân bố matching score theo mức độ
+      const scoreDistribution = {
+        excellent: 0,  // 80-100%: Xuất sắc
+        good: 0,       // 60-79%: Tốt
+        average: 0,    // 40-59%: Trung bình
+        low: 0         // 0-39%: Thấp
+      };
+
+      if (data && data.length > 0) {
+        data.forEach(record => {
+          const score = Number(record.matching_score);
+          if (isNaN(score)) return;
+          
+          if (score >= 80) {
+            scoreDistribution.excellent++;
+          } else if (score >= 60) {
+            scoreDistribution.good++;
+          } else if (score >= 40) {
+            scoreDistribution.average++;
+          } else {
+            scoreDistribution.low++;
+          }
+        });
+      }
+
+      return {
+        totalAnalyzed,
+        scoreDistribution
+      };
+    } catch (error) {
+      logger.error('Error in getAIStatistics:', error);
       throw error;
     }
   }

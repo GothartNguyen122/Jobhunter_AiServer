@@ -32,6 +32,7 @@ class AnalysisDataController {
         matchingScore
       } = req.body || {};
 
+      // Validate required fields
       if (!userId) {
         return res.status(400).json({
           success: false,
@@ -46,6 +47,7 @@ class AnalysisDataController {
         });
       }
 
+      // Normalize matching score
       const derivedMatchingScore =
         matchingScore ??
         AnalysisDataController.normalizeMatchingScore(
@@ -69,11 +71,11 @@ class AnalysisDataController {
         data: record
       });
     } catch (error) {
-      console.error('Error in createAnalysisData:', error);
+      console.error('Error in createAnalysisData:', error.message);
       return res.status(500).json({
         success: false,
         message: 'Failed to save analysis data',
-        error: error.message
+        error: error.message || 'Unknown error'
       });
     }
   }
@@ -150,6 +152,29 @@ class AnalysisDataController {
       message: 'Analysis data endpoint is running',
       timestamp: new Date().toISOString()
     });
+  }
+
+  /**
+   * Get AI statistics for dashboard
+   * Returns: total CVs analyzed and matching score distribution
+   */
+  async getAIStatistics(req, res) {
+    try {
+      const stats = await supabaseService.getAIStatistics();
+      
+      return res.json({
+        success: true,
+        message: 'AI statistics retrieved successfully',
+        data: stats
+      });
+    } catch (error) {
+      console.error('Error in getAIStatistics:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to fetch AI statistics',
+        error: error.message
+      });
+    }
   }
 }
 

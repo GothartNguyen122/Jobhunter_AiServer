@@ -53,13 +53,20 @@ class ResumeController {
       // Forward request to Backend API - Get resumes
       try {
         // Step 1: Call Backend API to get resumes
-        const resumesResponse = await axios.get(`${BACKEND_BASE_URL}/resumes/by-job/${jobId}`, {
+        const resumesResponse = await axios.get(`${BACKEND_BASE_URL}/api/v1/resumes/by-job/${jobId}`, {
           params: queryParams,
           headers: {
             'Authorization': `Bearer ${token}`,
             'Accept': 'application/json'
-          }
+          },
+          validateStatus: (status) => status < 500 // Don't throw on 4xx errors
         });
+        
+        // Handle 401 Unauthorized - token expired
+        if (resumesResponse.status === 401) {
+          logger.warn(`Token expired or invalid when fetching resumes for jobId: ${jobId}`);
+          return res.status(401).json(errorResponse('Authentication failed - token expired or invalid', 401));
+        }
 
         console.log("Backend resumes response:", resumesResponse.data);
         const resumesData = resumesResponse.data;
@@ -77,19 +84,27 @@ class ResumeController {
         // Step 2: Call Backend API to get job details
         let jobDescription = '';
         try {
-          const jobResponse = await axios.get(`${BACKEND_BASE_URL}/jobs/${jobId}`, {
+          const jobResponse = await axios.get(`${BACKEND_BASE_URL}/api/v1/jobs/${jobId}`, {
             headers: {
               'Authorization': `Bearer ${token}`,
               'Accept': 'application/json'
-            }
+            },
+            validateStatus: (status) => status < 500 // Don't throw on 4xx errors
           });
-
-          console.log("Backend job response:", jobResponse.data);
-          const jobData = jobResponse.data;
-          jobDescription = jobData?.data?.description || '';
           
-          if (!jobDescription) {
-            logger.warn(`Job description is empty for jobId: ${jobId}`);
+          // Handle 401 Unauthorized
+          if (jobResponse.status === 401) {
+            logger.warn(`Token expired or invalid when fetching job details for jobId: ${jobId}`);
+            // Continue with empty description if auth fails
+            jobDescription = '';
+          } else if (jobResponse.status === 200) {
+            console.log("Backend job response:", jobResponse.data);
+            const jobData = jobResponse.data;
+            jobDescription = jobData?.data?.description || '';
+            
+            if (!jobDescription) {
+              logger.warn(`Job description is empty for jobId: ${jobId}`);
+            }
           }
         } catch (jobError) {
           logger.error(`Failed to fetch job details for jobId ${jobId}:`, jobError.message);
