@@ -1,152 +1,217 @@
 {
-  "dashboard": {
-    "title": "Jobhunter AI Server Dashboard",
-    "tags": ["jobhunter", "ai-server", "nodejs"],
-    "timezone": "browser",
-    "schemaVersion": 27,
-    "version": 1,
-    "refresh": "30s",
-    "panels": [
+  "annotations": {
+    "list": [
       {
-        "id": 1,
-        "title": "HTTP Request Rate",
-        "type": "graph",
-        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
-        "targets": [
-          {
-            "expr": "rate(jobhunter_ai_http_requests_total[5m])",
-            "legendFormat": "{{method}} {{route}}",
-            "refId": "A"
-          }
-        ],
-        "yaxes": [
-          {"format": "reqps", "label": "Requests/sec"},
-          {"format": "short"}
-        ]
-      },
-      {
-        "id": 2,
-        "title": "HTTP Request Duration (p95)",
-        "type": "graph",
-        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
-        "targets": [
-          {
-            "expr": "histogram_quantile(0.95, rate(jobhunter_ai_http_request_duration_seconds_bucket[5m]))",
-            "legendFormat": "p95 - {{route}}",
-            "refId": "A"
-          }
-        ],
-        "yaxes": [
-          {"format": "s", "label": "Duration"},
-          {"format": "short"}
-        ]
-      },
-      {
-        "id": 3,
-        "title": "HTTP Errors",
-        "type": "graph",
-        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
-        "targets": [
-          {
-            "expr": "rate(jobhunter_ai_http_errors_total[5m])",
-            "legendFormat": "{{method}} {{route}} - {{status_code}}",
-            "refId": "A"
-          }
-        ],
-        "yaxes": [
-          {"format": "short"},
-          {"format": "short"}
-        ]
-      },
-      {
-        "id": 4,
-        "title": "Active Connections",
-        "type": "graph",
-        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
-        "targets": [
-          {
-            "expr": "jobhunter_ai_active_connections",
-            "legendFormat": "Active Connections",
-            "refId": "A"
-          }
-        ],
-        "yaxes": [
-          {"format": "short"},
-          {"format": "short"}
-        ]
-      },
-      {
-        "id": 5,
-        "title": "Chat Messages Total",
-        "type": "graph",
-        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
-        "targets": [
-          {
-            "expr": "rate(jobhunter_ai_chat_messages_total[5m])",
-            "legendFormat": "{{chatbox_id}} - {{status}}",
-            "refId": "A"
-          }
-        ],
-        "yaxes": [
-          {"format": "short"},
-          {"format": "short"}
-        ]
-      },
-      {
-        "id": 6,
-        "title": "PDF Extractions",
-        "type": "graph",
-        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
-        "targets": [
-          {
-            "expr": "rate(jobhunter_ai_pdf_extractions_total[5m])",
-            "legendFormat": "{{status}}",
-            "refId": "A"
-          }
-        ],
-        "yaxes": [
-          {"format": "short"},
-          {"format": "short"}
-        ]
-      },
-      {
-        "id": 7,
-        "title": "OpenAI API Calls",
-        "type": "graph",
-        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24},
-        "targets": [
-          {
-            "expr": "rate(jobhunter_ai_openai_api_calls_total[5m])",
-            "legendFormat": "{{model}} - {{status}}",
-            "refId": "A"
-          }
-        ],
-        "yaxes": [
-          {"format": "short"},
-          {"format": "short"}
-        ]
-      },
-      {
-        "id": 8,
-        "title": "Memory Usage",
-        "type": "graph",
-        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24},
-        "targets": [
-          {
-            "expr": "jobhunter_ai_process_resident_memory_bytes",
-            "legendFormat": "Memory",
-            "refId": "A"
-          }
-        ],
-        "yaxes": [
-          {"format": "bytes"},
-          {"format": "short"}
-        ]
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
       }
-    ],
-    "time": {
-      "from": "now-1h",
-      "to": "now"
+    ]
+  },
+  "editable": true,
+  "gnetId": null,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "CPU Usage (%)",
+      "id": 1,
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green" }, { "color": "yellow", "value": 70 }, { "color": "red", "value": 90 }] },
+          "custom": { "drawStyle": "line", "lineWidth": 1, "fillOpacity": 10 }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "showLegend": true, "displayMode": "list", "placement": "bottom", "calcs": ["mean", "max"] },
+        "tooltip": { "mode": "multi", "sort": "none" }
+      },
+      "targets": [
+        { "refId": "A", "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Memory Usage",
+      "id": 2,
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "bytes", "custom": { "fillOpacity": 10 } }, "overrides": [] },
+      "options": { "legend": { "showLegend": true, "displayMode": "list", "placement": "bottom", "calcs": ["mean", "max"] }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "refId": "A", "expr": "jobhunter_ai_process_resident_memory_bytes", "legendFormat": "Process Memory" },
+        { "refId": "B", "expr": "node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes", "legendFormat": "System Memory Used" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Network Traffic",
+      "id": 3,
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "Bps", "custom": { "fillOpacity": 10 } }, "overrides": [] },
+      "options": { "legend": { "showLegend": true, "displayMode": "list", "placement": "bottom", "calcs": ["mean", "max"] }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "refId": "A", "expr": "rate(node_network_receive_bytes_total{device!~\"lo|docker.*\"}[5m])", "legendFormat": "Receive - {{device}}" },
+        { "refId": "B", "expr": "rate(node_network_transmit_bytes_total{device!~\"lo|docker.*\"}[5m])", "legendFormat": "Transmit - {{device}}" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "HTTP Requests Rate",
+      "id": 4,
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "fillOpacity": 10 } }, "overrides": [] },
+      "options": { "legend": { "showLegend": true, "displayMode": "list", "placement": "bottom", "calcs": ["sum", "mean"] }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "refId": "A", "expr": "sum(rate(jobhunter_ai_http_requests_total[5m])) by (method, status)", "legendFormat": "{{method}} - {{status}}" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Total HTTP Requests",
+      "id": 5,
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "gridPos": { "x": 0, "y": 16, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "fillOpacity": 10 } }, "overrides": [] },
+      "options": { "legend": { "showLegend": true, "displayMode": "list", "placement": "bottom", "calcs": ["sum"] }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "refId": "A", "expr": "sum(jobhunter_ai_http_requests_total) by (method, status)", "legendFormat": "{{method}} - {{status}}" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "HTTP Response Time (p50/p95/p99)",
+      "id": 6,
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "gridPos": { "x": 12, "y": 16, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "fillOpacity": 10 } }, "overrides": [] },
+      "options": { "legend": { "showLegend": true, "displayMode": "list", "placement": "bottom", "calcs": ["mean", "max"] }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "refId": "A", "expr": "histogram_quantile(0.50, sum(rate(jobhunter_ai_http_request_duration_seconds_bucket[5m])) by (le, method))", "legendFormat": "p50 - {{method}}" },
+        { "refId": "B", "expr": "histogram_quantile(0.95, sum(rate(jobhunter_ai_http_request_duration_seconds_bucket[5m])) by (le, method))", "legendFormat": "p95 - {{method}}" },
+        { "refId": "C", "expr": "histogram_quantile(0.99, sum(rate(jobhunter_ai_http_request_duration_seconds_bucket[5m])) by (le, method))", "legendFormat": "p99 - {{method}}" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "HTTP Error Rate",
+      "id": 7,
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "gridPos": { "x": 0, "y": 24, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "fillOpacity": 10 } }, "overrides": [] },
+      "options": { "legend": { "showLegend": true, "displayMode": "list", "placement": "bottom", "calcs": ["sum"] }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "refId": "A", "expr": "sum(rate(jobhunter_ai_http_errors_total[5m])) by (status_code)", "legendFormat": "Status {{status_code}}" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Active Connections",
+      "id": 8,
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "gridPos": { "x": 12, "y": 24, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "fillOpacity": 10 } }, "overrides": [] },
+      "options": { "legend": { "showLegend": true, "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "refId": "A", "expr": "jobhunter_ai_active_connections", "legendFormat": "Active Connections" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Chat Messages Total",
+      "id": 9,
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "gridPos": { "x": 0, "y": 32, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "fillOpacity": 10 } }, "overrides": [] },
+      "options": { "legend": { "showLegend": true, "displayMode": "list", "placement": "bottom", "calcs": ["sum"] }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "refId": "A", "expr": "sum(rate(jobhunter_ai_chat_messages_total[5m])) by (chatbox_id, status)", "legendFormat": "{{chatbox_id}} - {{status}}" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "PDF Extractions Total",
+      "id": 10,
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "gridPos": { "x": 12, "y": 32, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "fillOpacity": 10 } }, "overrides": [] },
+      "options": { "legend": { "showLegend": true, "displayMode": "list", "placement": "bottom", "calcs": ["sum"] }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "refId": "A", "expr": "sum(rate(jobhunter_ai_pdf_extractions_total[5m])) by (status)", "legendFormat": "{{status}}" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "PDF Extraction Duration (p95)",
+      "id": 11,
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "gridPos": { "x": 0, "y": 40, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "fillOpacity": 10 } }, "overrides": [] },
+      "options": { "legend": { "showLegend": true, "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "refId": "A", "expr": "histogram_quantile(0.95, sum(rate(jobhunter_ai_pdf_extraction_duration_seconds_bucket[5m])) by (le, status))", "legendFormat": "p95 - {{status}}" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "OpenAI API Calls",
+      "id": 12,
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "gridPos": { "x": 12, "y": 40, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "fillOpacity": 10 } }, "overrides": [] },
+      "options": { "legend": { "showLegend": true, "displayMode": "list", "placement": "bottom", "calcs": ["sum"] }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "refId": "A", "expr": "sum(rate(jobhunter_ai_openai_api_calls_total[5m])) by (model, status)", "legendFormat": "{{model}} - {{status}}" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "OpenAI API Duration (p95)",
+      "id": 13,
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "gridPos": { "x": 0, "y": 48, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "fillOpacity": 10 } }, "overrides": [] },
+      "options": { "legend": { "showLegend": true, "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "refId": "A", "expr": "histogram_quantile(0.95, sum(rate(jobhunter_ai_openai_api_duration_seconds_bucket[5m])) by (le, model, status))", "legendFormat": "p95 - {{model}} - {{status}}" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "DB Query Duration (p95)",
+      "id": 14,
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "gridPos": { "x": 12, "y": 48, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "fillOpacity": 10 } }, "overrides": [] },
+      "options": { "legend": { "showLegend": true, "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "refId": "A", "expr": "histogram_quantile(0.95, sum(rate(jobhunter_ai_database_query_duration_seconds_bucket[5m])) by (le, operation, status))", "legendFormat": "p95 - {{operation}} - {{status}}" }
+      ]
     }
-  }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 27,
+  "style": "dark",
+  "tags": ["jobhunter", "ai-server", "nodejs"],
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Jobhunter AI Server Dashboard",
+  "uid": "jobhunter-ai-server",
+  "version": 1
 }

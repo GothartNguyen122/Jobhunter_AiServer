@@ -3,6 +3,11 @@ const client = require('prom-client');
 // Tạo một Registry mới cho metrics
 const register = new client.Registry();
 
+// Gắn prefix và default labels
+register.setDefaultLabels({
+  app: 'jobhunter_ai'
+});
+
 // Thêm default metrics (CPU, memory, event loop, etc.)
 client.collectDefaultMetrics({
   register,
@@ -21,7 +26,7 @@ const httpRequestDuration = new client.Histogram({
 const httpRequestTotal = new client.Counter({
   name: 'jobhunter_ai_http_requests_total',
   help: 'Total number of HTTP requests',
-  labelNames: ['method', 'route', 'status_code'],
+  labelNames: ['method', 'route', 'status'],
   register,
 });
 
@@ -83,10 +88,10 @@ const databaseQueryDuration = new client.Histogram({
   register,
 });
 
-// Middleware để đo thời gian request
+// Middleware để đo thời gian request và đếm requests
 const metricsMiddleware = (req, res, next) => {
   const start = Date.now();
-  const route = req.route ? req.route.path : req.path;
+  const route = req.route?.path || req.path || 'unknown';
 
   // Tăng số lượng active connections
   activeConnections.inc();
@@ -97,14 +102,20 @@ const metricsMiddleware = (req, res, next) => {
     const statusCode = res.statusCode;
     const method = req.method;
 
-    // Ghi metrics
+    // Đếm HTTP requests (theo format mới với label 'status')
+    httpRequestTotal.inc({
+      method: method,
+      route: route,
+      status: statusCode
+    });
+
+    // Ghi duration
     httpRequestDuration.observe(
       { method, route, status_code: statusCode },
       duration
     );
-    httpRequestTotal.inc({ method, route, status_code: statusCode });
 
-    // Ghi lỗi nếu có
+    // Ghi lỗi nếu có (giữ nguyên format cũ cho tương thích)
     if (statusCode >= 400) {
       httpRequestErrors.inc({ method, route, status_code: statusCode });
     }
