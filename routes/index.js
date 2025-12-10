@@ -15,6 +15,7 @@ const hrResumeRoutes = require('./hr/resumeRoutes');
 const hrJobRoutes = require('./hr/jobRoutes');
 const hrChatRoutes = require('./hr/hrChatRoutes');
 const metricsRoutes = require('./metricsRoutes');
+const atsRoutes = require('./atsRoutes');
 
 // API version prefix
 const API_VERSION = '/api/v1';
@@ -39,6 +40,9 @@ router.use('/admin/chatbox-admin/rag', ragRoutes);
 
 // Metrics endpoint for Prometheus (không cần prefix API_VERSION)
 router.use('/metrics', metricsRoutes);
+
+// ATS Pipeline routes
+router.use(`${API_VERSION}/ats`, atsRoutes);
 
 // Legacy endpoints for backward compatibility
 router.use('/api/v1/AiServer', chatRoutes);
@@ -86,6 +90,7 @@ router.get('/', (req, res) => {
       analysis_datas: `${API_VERSION}/analysis_datas`,
       resume_infos: `${API_VERSION}/resume-infos`,
       resumes: `${API_VERSION}/resumes`,
+      ats: `${API_VERSION}/ats`,
       rag: '/admin/chatbox-admin/rag',
       swagger: '/api-docs'
     }
