@@ -14,6 +14,7 @@ const resumeInfoRoutes = require('./resumeInfoRoutes');
 const hrResumeRoutes = require('./hr/resumeRoutes');
 const hrJobRoutes = require('./hr/jobRoutes');
 const hrChatRoutes = require('./hr/hrChatRoutes');
+const metricsRoutes = require('./metricsRoutes');
 
 // API version prefix
 const API_VERSION = '/api/v1';
@@ -35,6 +36,9 @@ router.use(`${API_VERSION}/AiServer/hr/chat`, hrChatRoutes);
 
 // RAG routes for frontend admin panel
 router.use('/admin/chatbox-admin/rag', ragRoutes);
+
+// Metrics endpoint for Prometheus (không cần prefix API_VERSION)
+router.use('/metrics', metricsRoutes);
 
 // Legacy endpoints for backward compatibility
 router.use('/api/v1/AiServer', chatRoutes);

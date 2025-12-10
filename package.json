@@ -29,6 +29,7 @@
     "openai": "^6.8.1",
     "pdf-parse": "^1.1.4",
     "pdfjs-dist": "^5.4.394",
+    "prom-client": "^15.1.0",
     "sharp": "^0.34.5",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",

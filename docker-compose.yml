@@ -78,8 +78,93 @@ services:
     networks:
       - jobhunter-net
 
+  # Prometheus - Thu thập và lưu trữ metrics
+  # Access: http://your-vps-ip:9090
+  prometheus:
+    image: prom/prometheus:latest
+    platform: linux/amd64
+    container_name: jobhunter-prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"  # Prometheus UI - Không conflict với các ports khác
+    networks:
+      - jobhunter-net
+    restart: unless-stopped
+
+  # Grafana - Visualization và dashboards
+  # Access: http://your-vps-ip:3000 (admin/admin123)
+  # Note: Port 3000 không conflict với các services khác trên VPS
+  grafana:
+    image: grafana/grafana:latest
+    platform: linux/amd64
+    container_name: jobhunter-grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=http://localhost:3000
+      - GF_INSTALL_PLUGINS=
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3000:3000"  # Grafana UI - Không conflict với các ports khác
+    networks:
+      - jobhunter-net
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+  # Node Exporter - Metrics về hệ thống (CPU, memory, disk, network)
+  # Access: http://your-vps-ip:9100/metrics
+  node-exporter:
+    image: prom/node-exporter:latest
+    platform: linux/amd64
+    container_name: jobhunter-node-exporter
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    ports:
+      - "9100:9100"  # Node Exporter metrics endpoint - Không conflict
+    networks:
+      - jobhunter-net
+    restart: unless-stopped
+
+  # MySQL Exporter - Metrics về database
+  # Access: http://your-vps-ip:9104/metrics
+  mysql-exporter:
+    image: prom/mysqld-exporter:latest
+    platform: linux/amd64
+    container_name: jobhunter-mysql-exporter
+    environment:
+      DATA_SOURCE_NAME: "root:123456@(mysql:3308)/"
+    ports:
+      - "9104:9104"  # MySQL Exporter metrics endpoint - Không conflict
+    networks:
+      - jobhunter-net
+    depends_on:
+      - mysql
+    restart: unless-stopped
+
 volumes:
   mysql_data2:
+  prometheus_data:
+  grafana_data:
 
 networks:
   jobhunter-net:

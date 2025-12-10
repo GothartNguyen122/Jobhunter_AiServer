@@ -10,6 +10,7 @@ const config = require('./config');
 const logger = require('./utils/logger');
 const { errorResponse } = require('./utils/response');
 const { swaggerUi, swaggerSpec } = require('./config/swagger');
+const { metricsMiddleware } = require('./services/metricsService');
 
 // Import routes
 const routes = require('./routes');
@@ -56,6 +57,9 @@ class App {
     // Body parsing middleware
     this.app.use(express.json({ limit: '10mb' }));
     this.app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+    // Metrics middleware - phải đặt trước request logging để đo được tất cả requests
+    this.app.use(metricsMiddleware);
 
     // Request logging middleware
     this.app.use((req, res, next) => {

@@ -1,0 +1,69 @@
+global:
+  scrape_interval: 15s # Thu thập metrics mỗi 15 giây
+  evaluation_interval: 15s # Đánh giá rules mỗi 15 giây
+  external_labels:
+    cluster: 'jobhunter-production'
+    environment: 'production'
+
+# Alertmanager configuration (tùy chọn, có thể thêm sau)
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets:
+#           - alertmanager:9093
+
+# Rule files (tùy chọn, có thể thêm sau)
+# rule_files:
+#   - "alert_rules.yml"
+
+# Scrape configurations - cấu hình các targets để Prometheus scrape metrics
+scrape_configs:
+  # Jobhunter AI Server (Node.js)
+  - job_name: 'jobhunter-ai-server'
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['ai_server:3005']
+        labels:
+          service: 'ai-server'
+          application: 'jobhunter-ai-server'
+          type: 'nodejs'
+
+  # Jobhunter Backend (Spring Boot) - nếu có Actuator endpoint
+  - job_name: 'jobhunter-backend'
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['backend:8080']
+        labels:
+          service: 'backend'
+          application: 'jobhunter-backend'
+          type: 'spring-boot'
+
+  # Prometheus tự monitor chính nó
+  - job_name: 'prometheus'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          service: 'prometheus'
+
+  # Node Exporter - metrics về hệ thống (CPU, memory, disk, network)
+  - job_name: 'node-exporter'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['node-exporter:9100']
+        labels:
+          service: 'node-exporter'
+          type: 'system'
+
+  # MySQL Exporter - metrics về database
+  - job_name: 'mysql-exporter'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['mysql-exporter:9104']
+        labels:
+          service: 'mysql-exporter'
+          type: 'database'

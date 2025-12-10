@@ -1,0 +1,152 @@
+{
+  "dashboard": {
+    "title": "Jobhunter AI Server Dashboard",
+    "tags": ["jobhunter", "ai-server", "nodejs"],
+    "timezone": "browser",
+    "schemaVersion": 27,
+    "version": 1,
+    "refresh": "30s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "HTTP Request Rate",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+        "targets": [
+          {
+            "expr": "rate(jobhunter_ai_http_requests_total[5m])",
+            "legendFormat": "{{method}} {{route}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "reqps", "label": "Requests/sec"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 2,
+        "title": "HTTP Request Duration (p95)",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(jobhunter_ai_http_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "p95 - {{route}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "s", "label": "Duration"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 3,
+        "title": "HTTP Errors",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+        "targets": [
+          {
+            "expr": "rate(jobhunter_ai_http_errors_total[5m])",
+            "legendFormat": "{{method}} {{route}} - {{status_code}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "short"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Active Connections",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+        "targets": [
+          {
+            "expr": "jobhunter_ai_active_connections",
+            "legendFormat": "Active Connections",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "short"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Chat Messages Total",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+        "targets": [
+          {
+            "expr": "rate(jobhunter_ai_chat_messages_total[5m])",
+            "legendFormat": "{{chatbox_id}} - {{status}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "short"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 6,
+        "title": "PDF Extractions",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+        "targets": [
+          {
+            "expr": "rate(jobhunter_ai_pdf_extractions_total[5m])",
+            "legendFormat": "{{status}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "short"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 7,
+        "title": "OpenAI API Calls",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24},
+        "targets": [
+          {
+            "expr": "rate(jobhunter_ai_openai_api_calls_total[5m])",
+            "legendFormat": "{{model}} - {{status}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "short"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Memory Usage",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24},
+        "targets": [
+          {
+            "expr": "jobhunter_ai_process_resident_memory_bytes",
+            "legendFormat": "Memory",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "bytes"},
+          {"format": "short"}
+        ]
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    }
+  }
+}
