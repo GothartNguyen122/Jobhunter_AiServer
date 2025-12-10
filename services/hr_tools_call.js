@@ -29,6 +29,9 @@ async function call_hr_function(functionName, arguments) {
       case 'get_user_job_pairs':
         return await hrHandlers.get_user_job_pairs(arguments);
       
+      case 'get_hr_resumes':
+        return await hrHandlers.get_hr_resumes(arguments);
+      
       default:
         logger.warn(`[HR Tools Call] Unknown HR function: ${functionName}`);
         return {

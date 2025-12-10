@@ -39,6 +39,34 @@ const hrFunctions = [
       }
     }
   },
+  // HR Resumes Functions
+  {
+    "type": "function",
+    "function": {
+      "name": "get_hr_resumes",
+      "description": "Get list of resumes for a specific HR user from Backend API. Returns all resumes from jobs managed by the HR user_id.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "hrId": {
+            "type": "string",
+            "description": "HR user ID (can be string or number)"
+          },
+          "page": {
+            "type": "integer",
+            "description": "Page number for pagination (default: 1)",
+            "default": 1
+          },
+          "size": {
+            "type": "integer",
+            "description": "Number of items per page (default: 10)",
+            "default": 100
+          }
+        },
+        "required": ["hrId"]
+      }
+    }
+  },
 ];
 
 module.exports = hrFunctions;

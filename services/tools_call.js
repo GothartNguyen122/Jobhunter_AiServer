@@ -777,6 +777,8 @@ async function call_function(functionName, arguments) {
         return await hrHandlers.get_resume_info_supabase(arguments);
       case 'get_user_job_pairs':
         return await hrHandlers.get_user_job_pairs(arguments);
+      case 'get_hr_resumes':
+        return await hrHandlers.get_hr_resumes(arguments);
 
       default:
         return {

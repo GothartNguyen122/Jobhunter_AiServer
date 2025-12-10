@@ -7,6 +7,7 @@ const logger = require('../../utils/logger');
 const hrFunctions = require('../../services/functions_call/hr/hrFunctions');
 const { call_function } = require('../../services/tools_call');
 const userJobPairsService = require('../../services/hr/userJobPairsService');
+const hrResumesService = require('../../services/hr/hrResumesService');
 
 // Initialize OpenAI client
 const openai = new OpenAI({
@@ -37,9 +38,10 @@ class HrChatController {
       const userMessage = messageData.message;
       const user = messageData.user || { name: 'HR User', role: 'HR' };
 
-      // Set access token vào service từ request header
-      // Service sẽ tự động lưu token và sử dụng khi gọi getUserJobPairs()
+      // Set access token vào services từ request header
+      // Services sẽ tự động lưu token và sử dụng khi gọi các methods
       userJobPairsService.setAccessToken(req);
+      hrResumesService.setAccessToken(req);
 
       // Gọi service để lấy userJobPairs từ backend API
       // Không cần truyền tham số, service tự động sử dụng token đã lưu

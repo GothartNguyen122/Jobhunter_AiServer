@@ -6,6 +6,7 @@
 const logger = require('../../../utils/logger');
 const supabaseService = require('../../supabaseService');
 const userJobPairsService = require('../../hr/userJobPairsService');
+const hrResumesService = require('../../hr/hrResumesService');
 
 /**
  * Get resume analysis data from Supabase for a specific user-job pair
@@ -95,8 +96,67 @@ async function get_user_job_pairs(params) {
   }
 }
 
+/**
+ * Get list of resumes for a specific HR user from Backend API
+ * Returns all resumes from jobs belonging to the HR's company
+ * @param {object} params - { hrId, page, size }
+ * @returns {Promise<object>} - { success, data, message/error }
+ */
+async function get_hr_resumes(params) {
+  try {
+    const { hrId, page, size } = params;
+
+    if (!hrId) {
+      logger.warn(`[HR Function] Missing required param: hrId=${hrId}`);
+      return {
+        success: false,
+        error: 'hrId is required'
+      };
+    }
+
+    logger.info(`[HR Function] Getting resumes for HR id: ${hrId} (page: ${page || 1}, size: ${size || 10})`);
+
+    // Service đã được set accessToken từ controller trước đó
+    // Chỉ cần gọi getHrResumes() với hrId và pagination params
+    const result = await hrResumesService.getHrResumes(hrId, {
+      page: page,
+      size: size
+    });
+
+    if (!result || !result.result || result.result.length === 0) {
+      return {
+        success: true,
+        data: {
+          meta: result.meta || { page: 1, pageSize: 10, pages: 0, total: 0 },
+          resumes: []
+        },
+        message: `No resumes found for HR id: ${hrId}`
+      };
+    }
+
+    logger.info(`[HR Function] Successfully retrieved ${result.result.length} resumes for HR id: ${hrId}`);
+
+    return {
+      success: true,
+      data: {
+        meta: result.meta,
+        resumes: result.result
+      },
+      message: `Successfully retrieved ${result.result.length} resumes for HR id: ${hrId}`
+    };
+
+  } catch (error) {
+    logger.error('[HR Function] Error in get_hr_resumes:', error);
+    return {
+      success: false,
+      error: error.message || 'Failed to retrieve HR resumes'
+    };
+  }
+}
+
 module.exports = {
   get_resume_info_supabase,
-  get_user_job_pairs
+  get_user_job_pairs,
+  get_hr_resumes
 };
 
